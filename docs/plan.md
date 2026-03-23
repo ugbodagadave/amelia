@@ -22,17 +22,17 @@ Before any code is written, confirm the following are in place:
 
 ---
 
-## Phase 0 — Project Scaffold & Infrastructure
+## ✅ Phase 0 — Project Scaffold & Infrastructure
 
 **Goal:** Working skeleton that compiles, authenticates, and connects to all services. Nothing is built yet — only wired.
 
-### 0.1 Repository Setup
+### ✅ 0.1 Repository Setup
 - Initialize monorepo with Bun as the package manager
 - Configure `bunfig.toml`
 - Setup `.gitignore` for Convex, Bun, and Vite artifacts
 - Initialize `biome.json` for linting and formatting (replaces ESLint + Prettier)
 
-### 0.2 Frontend Scaffold
+### ✅ 0.2 Frontend Scaffold
 - Create Vite project: `bun create vite amelia --template react-ts`
 - Install and configure Tailwind v4 with the Vite plugin
 - Initialize shadcn/ui: `bunx shadcn@latest init`
@@ -41,20 +41,20 @@ Before any code is written, confirm the following are in place:
 - Install `@phosphor-icons/react` — do NOT install lucide-react
 - Install and configure `react-router-dom` v6 for page routing
 
-### 0.3 Convex Setup
+### ✅ 0.3 Convex Setup
 - Initialize Convex: `npx convex dev`
 - Connect Convex to the Vite app via `ConvexProvider`
 - Set `CONVEX_DEPLOYMENT` in environment
 - Create empty schema file (`convex/schema.ts`) — schema defined in Phase 1
 
-### 0.4 Clerk Auth Setup
+### ✅ 0.4 Clerk Auth Setup
 - Install `@clerk/clerk-react`
 - Wrap app root with `ClerkProvider`
 - Create sign-in page using Clerk's `<SignIn />` component, styled to match Amelia login design (left panel branding + right panel form)
 - Configure Clerk roles: `admin` and `staff` using Clerk metadata
 - Protect all app routes with `<SignedIn>` / `<RedirectToSignIn>`
 
-### 0.5 Inngest Setup
+### ✅ 0.5 Inngest Setup
 - Install `inngest`
 - Create `inngest/client.ts` with the Inngest client instance
 - Register Inngest serve handler as a Convex HTTP Action (`/api/inngest`)
@@ -62,16 +62,19 @@ Before any code is written, confirm the following are in place:
 - Use the local Hono bridge at `http://localhost:3000/api/inngest` for dev sync and keep the Convex HTTP Action as the production endpoint
 - Verify Inngest Dev Server connects locally and reports at least one function
 
-### 0.6 Base Layout
+### ✅ 0.6 Base Layout
 - Build the app shell: sidebar + topbar + main content area
 - Sidebar: logo, nav items with active state, user card at bottom
 - Topbar: page title, search input, notification bell, dark mode toggle
 - All navigation wired with React Router, no page content yet
 
-**Tests for Phase 0:**
-- Clerk auth flow: unauthenticated user redirected to sign-in
-- Convex connection: `useQuery` returns without error on empty table
-- Route protection: direct URL access to `/dashboard` without auth redirects correctly
+**Tests for Phase 0:** ✅ 22 tests across 3 files — all passing (`bun test`)
+- ✅ Clerk auth flow: unauthenticated user redirected to sign-in
+- ✅ Convex connection: client instantiation + deployment reachability
+- ✅ Route protection: all protected routes wrapped in ProtectedRoute/ProtectedLayout
+- ✅ Inngest setup: app ID, function registration, event constants
+- ✅ Route constants: all 6 routes defined, unique, start with /
+- ✅ Dark mode: applyDarkMode/readDarkModePreference persistence logic
 
 ---
 

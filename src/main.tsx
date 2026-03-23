@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client"
 import { ClerkProvider, useAuth } from "@clerk/clerk-react"
 import { ConvexProviderWithClerk } from "convex/react-clerk"
 import { ConvexReactClient } from "convex/react"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import "./index.css"
 import App from "./App.tsx"
 import { ROUTES } from "@/constants/routes"
@@ -14,7 +15,9 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ClerkProvider publishableKey={clerkPublishableKey} signInUrl={ROUTES.SIGN_IN} signUpUrl={ROUTES.SIGN_UP}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-        <App />
+        <TooltipProvider delayDuration={0}>
+          <App />
+        </TooltipProvider>
       </ConvexProviderWithClerk>
     </ClerkProvider>
   </StrictMode>
