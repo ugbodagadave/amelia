@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:skills.sh)",
+      "Bash(npx skills:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(cd:*)",
+      "Bash(cp:*)"
+    ]
+  }
+}

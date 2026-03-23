@@ -25,6 +25,151 @@
       "source": "get-convex/agent-skills",
       "sourceType": "github",
       "computedHash": "0e299633b83f579b494e45b91ba2f2c4690caba4a8c26acaaf26d8bd47a2be36"
+    },
+    "deploy-to-vercel": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "3a0481591523c55ecfe2569b6b28b2dcbfa3742367667697219d29170981ad53"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "516bd2154eb843a8240e43d5b285229129853114ad7075a5e141e1c08e408c84"
+    },
+    "git-flow-branch-creator": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "computedHash": "8add10a7fce31ef99856d36bffeb90f1f1130f5afd88b111417c257f1e5d39bd"
+    },
+    "interswitch-card-payments": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "7b18fe5e240580dd379fafa19a22aa3f6686fba1fdefe4aab21cbc1994e5b652"
+    },
+    "interswitch-card360": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "d6b6e21588d3d0afced816ec0721d4b40b9a6c85c6a986b6c5ee4f3a66a0cb87"
+    },
+    "interswitch-cardless": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "fbcdb8aebdacd6ad34313627698f0fd96564ffd8b0709e54b3fa19c09ffdc75c"
+    },
+    "interswitch-customer-insights": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "248373a0ff8904008acbdee7bba30801066a70be7778d1802a8f88f0856bc1c5"
+    },
+    "interswitch-fintech-cards": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "1e4bfa7a3c34262da8c41e0ffecde630068be54f66a68c0f6516bc9c6a5ebb9a"
+    },
+    "interswitch-lending": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "da322a8feeeb318b845c8c9aaf4dada01c520da257a2bf68f719bedda68f6d38"
+    },
+    "interswitch-payment-links": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "28e1c4474c8a5f5d030162ff0a2bc93de57ff2d9b3afef9dfd0cfc77de106b12"
+    },
+    "interswitch-payouts": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "e5ff93191c10a82e78308651a9c5ac91afd9b3eb7c99b138fecf412f8dcc7c08"
+    },
+    "interswitch-setup": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "a091fd16be77d43f70de5c88de62241b6bfaa3d6d717fa2349e7f2c8fd022ab4"
+    },
+    "interswitch-split-settlement": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "0588d9cbb22e5966e7c904774336dcd1bfa26e2af41d009659cee53fc072b041"
+    },
+    "interswitch-testing": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "b73d1d9e5e150e62793843e986828d8ebc8bd8c7d892be1b1d633913b304f845"
+    },
+    "interswitch-transaction-search": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "d64effcd973a717ed27a0915ca0da9ed2a795440e00e0092af6f82ad7ae29436"
+    },
+    "interswitch-transactions": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "49dcd74c6c698d8384ae106bb294c2baab017042989b695fd35adfa7ec413202"
+    },
+    "interswitch-transfers": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "0239e4d85b38bb47d69454dd4fa1721d745645ef1b3ad8869ae96ae04269f24d"
+    },
+    "interswitch-vas": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "dfba779164ca1f884f500e2bcd68fc461e9397b64e4937df6e70108324880200"
+    },
+    "interswitch-wallets": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "9959f0844765f35bbe1ae6430c190aa53942bd731d42a765433baa1dc1eb5fc3"
+    },
+    "interswitch-web-checkout": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "f4ca56cff8303f37499b09e11f99f12a58864c46b49d043755e6cb5a9cc42153"
+    },
+    "interswitch-webhooks": {
+      "source": "rexedge/interswitch",
+      "sourceType": "github",
+      "computedHash": "8e16a5a642c8ea3848858a087531378967c25a65a3e15ad6fe7ae75eddfd35b5"
+    },
+    "shadcn": {
+      "source": "shadcn/ui",
+      "sourceType": "github",
+      "computedHash": "77faba608ea949351d1757e29e6cb726f6ec5937f7595be0593038a7d2d76bb9"
+    },
+    "systematic-debugging": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "72e9ab72627e4fd8ed26a582e82309a98ecdc4f6e1c99418430ac05682c9e91d"
+    },
+    "tailwind-design-system": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "0fc7b79d08ee5168d46c6887014cbe5bd02f2c5e458858470e20fc8ecedefb46"
+    },
+    "test-driven-development": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "126f1ebf6ccd414f42544f6e83d8cc5adb089e1108eaffb7c400701e37eecd9f"
+    },
+    "userinterface-wiki": {
+      "source": "raphaelsalaja/userinterface-wiki",
+      "sourceType": "github",
+      "computedHash": "1d1fbf49afa29712573e39bea7669b932160ae93bdf96a16d729849641b1fa22"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "e218e50fe7057a4db91390e579c7db5aafac2394c31a3d8e5fa9444c8fa00726"
+    },
+    "vite": {
+      "source": "antfu/skills",
+      "sourceType": "github",
+      "computedHash": "1cdc4bbecaa89544e6ef92566b015db989994bf90c4472683ac64f7a114dc3af"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "d8e7d3afe37dcc8a97b99ffb5afdb4d0919ae0092ea8b68f44eb201f035e33ac"
     }
   }
 }
