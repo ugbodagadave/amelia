@@ -8,7 +8,8 @@
       "Bash(cp:*)",
       "Bash(bun add:*)",
       "Bash(bun remove:*)",
-      "Bash(bun run:*)"
+      "Bash(bun run:*)",
+      "Bash(npx convex:*)"
     ]
   }
 }

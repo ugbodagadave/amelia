@@ -1,15 +1,21 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
-import { ConvexProvider, ConvexReactClient } from 'convex/react'
+import { StrictMode } from "react"
+import { createRoot } from "react-dom/client"
+import { ClerkProvider, useAuth } from "@clerk/clerk-react"
+import { ConvexProviderWithClerk } from "convex/react-clerk"
+import { ConvexReactClient } from "convex/react"
+import "./index.css"
+import App from "./App.tsx"
+import { ROUTES } from "@/constants/routes"
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string)
+const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ConvexProvider client={convex}>
-      <App />
-    </ConvexProvider>
-  </StrictMode>,
+    <ClerkProvider publishableKey={clerkPublishableKey} signInUrl={ROUTES.SIGN_IN} signUpUrl={ROUTES.SIGN_UP}>
+      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+        <App />
+      </ConvexProviderWithClerk>
+    </ClerkProvider>
+  </StrictMode>
 )
