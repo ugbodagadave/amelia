@@ -1,0 +1,6 @@
+[install]
+optional = true
+production = false
+
+[run]
+bun = true

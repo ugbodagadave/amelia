@@ -5,7 +5,10 @@
       "Bash(npx skills:*)",
       "WebFetch(domain:github.com)",
       "Bash(cd:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(bun add:*)",
+      "Bash(bun remove:*)",
+      "Bash(bun run:*)"
     ]
   }
 }
