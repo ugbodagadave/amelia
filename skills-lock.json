@@ -41,6 +41,36 @@
       "sourceType": "github",
       "computedHash": "8add10a7fce31ef99856d36bffeb90f1f1130f5afd88b111417c257f1e5d39bd"
     },
+    "inngest-durable-functions": {
+      "source": "inngest/inngest-skills",
+      "sourceType": "github",
+      "computedHash": "275843c95eb0e4e2489a65411130545c2064957871a77f1b00cf8e2736786478"
+    },
+    "inngest-events": {
+      "source": "inngest/inngest-skills",
+      "sourceType": "github",
+      "computedHash": "5692cc4c8ed8b302c6e1a06b7e2eca678e457977835483aa61f2ff315c785a15"
+    },
+    "inngest-flow-control": {
+      "source": "inngest/inngest-skills",
+      "sourceType": "github",
+      "computedHash": "11c498b2c7673407bbf6fc64e0d98e83202a866eef5b7a0ffd0a80abdf15e596"
+    },
+    "inngest-middleware": {
+      "source": "inngest/inngest-skills",
+      "sourceType": "github",
+      "computedHash": "17f8198c58fa8dce9520e35f68ca811affc154e6b70de186a2e23288d3fef6d3"
+    },
+    "inngest-setup": {
+      "source": "inngest/inngest-skills",
+      "sourceType": "github",
+      "computedHash": "7334c7eafbed3a1829dbaeb3da1a831f7fa03c085afcc820dcfde184e0fea60c"
+    },
+    "inngest-steps": {
+      "source": "inngest/inngest-skills",
+      "sourceType": "github",
+      "computedHash": "2663d4b7ab8f7fb7c42d803017db33f6e4a9e57188c62ff3c5a0f582e7889364"
+    },
     "interswitch-card-payments": {
       "source": "rexedge/interswitch",
       "sourceType": "github",

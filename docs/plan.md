@@ -58,7 +58,9 @@ Before any code is written, confirm the following are in place:
 - Install `inngest`
 - Create `inngest/client.ts` with the Inngest client instance
 - Register Inngest serve handler as a Convex HTTP Action (`/api/inngest`)
-- Verify Inngest Dev Server connects locally
+- Register a bootstrap function in the shared Inngest function registry so sync never happens with an empty app
+- Use the local Hono bridge at `http://localhost:3000/api/inngest` for dev sync and keep the Convex HTTP Action as the production endpoint
+- Verify Inngest Dev Server connects locally and reports at least one function
 
 ### 0.6 Base Layout
 - Build the app shell: sidebar + topbar + main content area

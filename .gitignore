@@ -32,3 +32,6 @@ convex/_generated/
 .agents/
 AGENTS.md
 CLAUDE.md
+
+# Local integration notes
+docs/inngest.md

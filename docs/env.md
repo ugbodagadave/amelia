@@ -80,16 +80,19 @@ MISTRAL_API_KEY=your_mistral_api_key
 ## Inngest
 
 ```env
+# Local development
+INNGEST_DEV=1
+
 # From: Inngest Dashboard → Your App → Keys
 INNGEST_EVENT_KEY=your_inngest_event_key
 INNGEST_SIGNING_KEY=signkey-prod-xxxxxxxxxxxxxxxxxxxx
 
-# For local development with Inngest Dev Server
-# INNGEST_DEV_SERVER_URL=http://localhost:8288
+# Optional when using a non-default dev server port
+# INNGEST_BASE_URL=http://localhost:8288
 ```
 
 **Where to get it:** `inngest.com` → Dashboard → Your App → Manage → Keys.
-**Note:** `INNGEST_EVENT_KEY` is used to send events. `INNGEST_SIGNING_KEY` is used to verify Inngest calls to your endpoint.
+**Note:** `INNGEST_DEV=1` is required for local serve-mode development with Inngest v4 unless you hardcode `isDev: true`. `INNGEST_EVENT_KEY` is used to send events in production. `INNGEST_SIGNING_KEY` is used to verify Inngest calls to your production endpoint.
 
 ---
 

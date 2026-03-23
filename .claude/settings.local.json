@@ -9,7 +9,8 @@
       "Bash(bun add:*)",
       "Bash(bun remove:*)",
       "Bash(bun run:*)",
-      "Bash(npx convex:*)"
+      "Bash(npx convex:*)",
+      "Bash(node:*)"
     ]
   }
 }
