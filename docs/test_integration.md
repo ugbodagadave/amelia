@@ -214,8 +214,8 @@ Interswitch has two completely separate API systems with different credentials, 
 #### Web Checkout ✅ Confirmed
 
 The hosted payment page flow:
-1. Build payment parameters: `txnref`, `merchantcode`, `payitem`, `amount`, `site_redirect_url`, `currency`, `isswitch`
-2. Compute `SHA512(txnref + merchantcode + payitem + amount + site_redirect_url + mac_key)` — field concatenation order is critical, no separators
+1. Build payment parameters: `txn_ref`, `merchant_code`, `product_id`, `pay_item_id`, `amount`, `site_redirect_url`, `currency`, `isswitch`
+2. Compute `SHA512(txnref + product_id + pay_item_id + amount + site_redirect_url + mac_key)` — field concatenation order is critical, no separators
 3. POST these params to `https://newwebpay.qa.interswitchng.com/collections/w/pay`
 4. Interswitch shows a hosted card payment page — your server never touches card data
 5. After payment, Interswitch redirects to your `site_redirect_url` with `txnref`, `payRef`, and `ResponseCode` in the query string
@@ -268,7 +268,7 @@ Returns `{ responseCode: "09", redirectUrl: "https://sandboxcashier.opaycheckout
 
 Redirect the patient to the `redirectUrl`. They complete payment in OPay's hosted cashier UI.
 
-After payment, OPay redirects back with `?status=SUCCESS&payToken=PAYTOKEN...` in the URL.
+Sandbox testing did not give Amelia a reliable callback/return redirect. The safe implementation is: open OPay in a new tab, keep Amelia on the current page, then confirm status from Amelia using the saved `transactionReference`.
 
 **Confirm payment:**
 ```
@@ -279,7 +279,7 @@ Content-Type: application/json
 ```
 Returns `{ responseCode: "00", transactionReference: "CP1774205435235" }`. `responseCode: "00"` = paid and confirmed.
 
-**No webhooks.** OPay uses polling only — call the status endpoint once on the callback redirect to confirm, then mark the bill as PAID.
+**No webhooks.** OPay uses polling only — call the status endpoint from Amelia after the patient completes wallet checkout, then mark the bill as PAID.
 
 **Sandbox test credentials:**
 - Phone: `1259257649` | PIN: `123456` | OTP: `315632` → success | OTP: `315633` → fail

@@ -46,6 +46,18 @@ interface BillPaymentContext {
   paidAt?: number | null
 }
 
+interface PaymentFinalizeResult {
+  status: "success" | "failed"
+  message: string
+  billId: Id<"bills"> | null
+}
+
+interface OPayConfirmResult {
+  status: "success" | "pending"
+  responseCode: string
+  billId: Id<"bills"> | null
+}
+
 async function getCurrentClinicId(ctx: MutationCtx | QueryCtx) {
   const clerkUserId = await requireClerkUserId(ctx)
   const clinic = await ctx.db
@@ -97,16 +109,53 @@ function resolveAppUrl() {
   return requireEnv("VITE_APP_URL").replace(/\/$/, "")
 }
 
+function resolveConvexSiteUrl() {
+  const configuredUrl =
+    process.env.INTERSWITCH_WEBHOOK_URL ??
+    process.env.VITE_CONVEX_SITE_URL ??
+    process.env.CONVEX_SITE_URL
+
+  if (!configuredUrl) {
+    throw new ConvexError({
+      code: "ENV_MISSING",
+      message: "INTERSWITCH_WEBHOOK_URL is not configured for this deployment.",
+    })
+  }
+
+  return configuredUrl.replace(/\/api\/webhooks\/interswitch\/?$/, "").replace(/\/$/, "")
+}
+
 function buildClinicPaymentLink(token: string) {
   return `${resolveAppUrl()}${buildPublicPaymentPath(token)}`
 }
 
 function buildCardCallbackUrl() {
-  return `${resolveAppUrl()}/pay/callback/card`
+  return `${resolveConvexSiteUrl()}/api/payments/interswitch/card-callback`
 }
 
-function buildOlayCallbackUrl() {
-  return `${resolveAppUrl()}/pay/callback/opay`
+function buildCardResultUrl(input: {
+  status: "success" | "failed"
+  message: string
+  billId: Id<"bills"> | null
+  txnRef: string
+  payRef?: string
+  responseCode: string
+}) {
+  const url = new URL(`${resolveAppUrl()}/pay/callback/card`)
+  url.searchParams.set("status", input.status)
+  url.searchParams.set("message", input.message)
+  url.searchParams.set("txnref", input.txnRef)
+  url.searchParams.set("ResponseCode", input.responseCode)
+
+  if (input.billId) {
+    url.searchParams.set("billId", input.billId)
+  }
+
+  if (input.payRef) {
+    url.searchParams.set("payRef", input.payRef)
+  }
+
+  return url.toString()
 }
 
 function ensureBillIsReadyForCollection(bill: {
@@ -134,10 +183,9 @@ function ensureBillIsReadyForCollection(bill: {
 
 function buildPaymentSessionDetails(bill: {
   totalAmount: number
-  transactionReference?: string | null
   paymentLinkToken?: string | null
 }) {
-  const transactionReference = bill.transactionReference ?? buildTxnRef()
+  const transactionReference = buildTxnRef()
   const paymentLinkToken = bill.paymentLinkToken ?? buildPaymentLinkToken()
 
   return {
@@ -421,25 +469,30 @@ async function initiatePaymentForBill(
   })
 
   if (channel === BILL_PAYMENT_CHANNEL.CARD) {
+    const merchantCode = requireEnv("INTERSWITCH_MERCHANT_CODE")
+    const payItemId = requireEnv("INTERSWITCH_PAY_ITEM_ID")
+    const cardCallbackUrl = buildCardCallbackUrl()
+
     return {
       endpoint: "https://newwebpay.qa.interswitchng.com/collections/w/pay",
       method: "POST" as const,
       paymentLink: paymentSession.paymentLink,
       transactionReference: paymentSession.transactionReference,
       fields: {
-        txnref: paymentSession.transactionReference,
-        merchantcode: requireEnv("INTERSWITCH_MERCHANT_CODE"),
-        payitemid: requireEnv("INTERSWITCH_PAY_ITEM_ID"),
+        txn_ref: paymentSession.transactionReference,
+        merchant_code: merchantCode,
+        product_id: payItemId,
+        pay_item_id: payItemId,
         amount: String(paymentSession.amountInKobo),
-        site_redirect_url: buildCardCallbackUrl(),
+        site_redirect_url: cardCallbackUrl,
         currency: "566",
         isswitch: "1",
         hash: buildWebCheckoutHash({
           txnRef: paymentSession.transactionReference,
-          merchantCode: requireEnv("INTERSWITCH_MERCHANT_CODE"),
-          payItemId: requireEnv("INTERSWITCH_PAY_ITEM_ID"),
+          merchantCode,
+          payItemId,
           amountInKobo: paymentSession.amountInKobo,
-          redirectUrl: buildCardCallbackUrl(),
+          redirectUrl: cardCallbackUrl,
           macKey: requireEnv("INTERSWITCH_MAC_KEY"),
         }),
       },
@@ -454,7 +507,6 @@ async function initiatePaymentForBill(
       payableCode: requireEnv("INTERSWITCH_PAY_ITEM_ID"),
       amount: paymentSession.amountInKobo,
       transactionReference: paymentSession.transactionReference,
-      redirectUrl: buildOlayCallbackUrl(),
     }),
   })
 
@@ -663,17 +715,41 @@ export const finalizeCardPaymentCallback = action({
     payRef: v.optional(v.string()),
     responseCode: v.string(),
   },
-  handler: async (ctx, args) => {
-    const bill = await ctx.runQuery(internal.payments.findBillByTransactionReference, {
+  handler: async (ctx, args): Promise<PaymentFinalizeResult> => {
+    return await ctx.runAction(internal.payments.finalizeCardPaymentCallbackInternal, args)
+  },
+})
+
+export const finalizeCardPaymentCallbackInternal = internalAction({
+  args: {
+    txnRef: v.string(),
+    payRef: v.optional(v.string()),
+    responseCode: v.string(),
+  },
+  handler: async (ctx, args): Promise<PaymentFinalizeResult> => {
+    const bill = (await ctx.runQuery(internal.payments.findBillByTransactionReference, {
       transactionReference: args.txnRef,
-    })
+    })) as Doc<"bills"> | null
 
     if (!bill) {
-      return { status: "failed", message: "Payment reference could not be matched to a bill." }
+      return {
+        status: "failed",
+        message: "Payment reference could not be matched to a bill.",
+        billId: null,
+      }
     }
 
+    const hasProviderReference = Boolean(args.payRef?.trim())
+    const responseCodeMissingButPaid = !args.responseCode && hasProviderReference
+
     if (!isSuccessfulPaymentResponseCode(args.responseCode)) {
-      return { status: "failed", message: "Payment was not approved by Interswitch." }
+      if (!responseCodeMissingButPaid) {
+      return {
+        status: "failed",
+        message: "Payment was not approved by Interswitch.",
+        billId: bill._id,
+      }
+      }
     }
 
     const result = await ctx.runMutation(internal.payments.markBillPaid, {
@@ -696,13 +772,14 @@ export const finalizeCardPaymentCallback = action({
     return {
       status: "success",
       message: "Payment confirmed.",
+      billId: bill._id,
     }
   },
 })
 
 export const confirmOPayPayment = action({
   args: { reference: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<OPayConfirmResult> => {
     const response = await fetch("https://qa.interswitchng.com/collections/api/v1/opay/status", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -721,12 +798,13 @@ export const confirmOPayPayment = action({
       return {
         status: "pending",
         responseCode: data.responseCode,
+        billId: null,
       }
     }
 
-    const bill = await ctx.runQuery(internal.payments.findBillByTransactionReference, {
+    const bill = (await ctx.runQuery(internal.payments.findBillByTransactionReference, {
       transactionReference: args.reference,
-    })
+    })) as Doc<"bills"> | null
 
     if (!bill) {
       throw new ConvexError({
@@ -755,6 +833,7 @@ export const confirmOPayPayment = action({
     return {
       status: "success",
       responseCode: data.responseCode,
+      billId: bill._id,
     }
   },
 })
@@ -835,14 +914,18 @@ async function sendPaymentConfirmedEvent(input: {
     return
   }
 
-  await inngest.send({
-    name: "payment/confirmed",
-    data: {
-      patientPhone: normalizePhoneForSms(input.patientPhone),
-      clinicName: input.clinicName,
-      totalAmount: input.totalAmount,
-    },
-  })
+  try {
+    await inngest.send({
+      name: "payment/confirmed",
+      data: {
+        patientPhone: normalizePhoneForSms(input.patientPhone),
+        clinicName: input.clinicName,
+        totalAmount: input.totalAmount,
+      },
+    })
+  } catch (error) {
+    console.error("Failed to send payment/confirmed event.", error)
+  }
 }
 
 export const createPaymentLinkToken = mutation({

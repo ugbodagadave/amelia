@@ -252,10 +252,21 @@
 }
 
 @layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground font-sans;
+    margin: 0;
+  }
+
+  #root {
+    min-height: 100vh;
   }
 }

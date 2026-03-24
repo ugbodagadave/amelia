@@ -91,8 +91,8 @@ Body:
 
 | Parameter          | Description                                      |
 |--------------------|--------------------------------------------------|
-| `merchantcode`     | Your Quickteller Business merchant code          |
-| `txnref`           | Transaction reference (≤15 characters)           |
+| `merchant_code`    | Your Quickteller Business merchant code          |
+| `txn_ref`          | Transaction reference (≤15 characters)           |
 | `product_id`       | Same as your payable code                        |
 | `amount`           | Amount in **kobo** (₦41,000 → `4100000`)        |
 | `currency`         | `566` (NGN)                                      |
@@ -176,6 +176,8 @@ Content-Type: application/json
 ```
 
 Redirect the user to `redirectUrl` to complete payment in OPay.
+
+The initialize response does not provide a reliable merchant callback hook in sandbox. Amelia should keep the bill page open, launch OPay in a new tab/window, then confirm status from the app with the saved `transactionReference`.
 
 ### Check Payment Status
 

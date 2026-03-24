@@ -13,8 +13,10 @@ interface PaymentReadinessCardProps {
   transactionReference?: string | null
   isCardPending?: boolean
   isOpayPending?: boolean
+  isConfirmingOpay?: boolean
   onPayWithCard: () => void
   onPayWithOPay: () => void
+  onConfirmOPay?: () => void
 }
 
 export function PaymentReadinessCard({
@@ -25,8 +27,10 @@ export function PaymentReadinessCard({
   transactionReference,
   isCardPending = false,
   isOpayPending = false,
+  isConfirmingOpay = false,
   onPayWithCard,
   onPayWithOPay,
+  onConfirmOPay,
 }: PaymentReadinessCardProps) {
   const isBlocked =
     paymentType === "hmo" && (status === BILL_STATUS.AWAITING_AUTH || !hasAuthCode)
@@ -88,6 +92,17 @@ export function PaymentReadinessCard({
             Pay with OPay
           </Button>
         </div>
+
+        {onConfirmOPay && transactionReference ? (
+          <Button
+            variant="secondary"
+            onClick={onConfirmOPay}
+            disabled={isBlocked || isConfirmingOpay}
+          >
+            <WalletIcon data-icon="inline-start" />
+            Confirm OPay payment
+          </Button>
+        ) : null}
 
         <Button variant="secondary" onClick={() => void copyPaymentLink()} disabled={!paymentLink}>
           <CopyIcon data-icon="inline-start" />

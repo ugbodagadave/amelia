@@ -58,14 +58,17 @@ export function BillDetailPage() {
   const changeAuthCode = useMutation(api.bills.changeAuthCode)
   const initiateCardPayment = useAction(api.payments.initiateCardPayment)
   const initiateOPayPayment = useAction(api.payments.initiateOPayPayment)
+  const confirmOPayPayment = useAction(api.payments.confirmOPayPayment)
 
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false)
   const [authCodeDraft, setAuthCodeDraft] = useState("")
   const [isSavingAuth, setIsSavingAuth] = useState(false)
   const [isCardPending, setIsCardPending] = useState(false)
   const [isOpayPending, setIsOpayPending] = useState(false)
+  const [isConfirmingOpay, setIsConfirmingOpay] = useState(false)
   const [paymentLink, setPaymentLink] = useState<string | null>(null)
   const [transactionReference, setTransactionReference] = useState<string | null>(null)
+  const [shouldAutoConfirmOpay, setShouldAutoConfirmOpay] = useState(false)
 
   useEffect(() => {
     if (bill?.authorizationCode) {
@@ -77,6 +80,12 @@ export function BillDetailPage() {
     setPaymentLink(bill?.paymentLink ?? null)
     setTransactionReference(bill?.transactionReference ?? null)
   }, [bill?.paymentLink, bill?.transactionReference])
+
+  useEffect(() => {
+    if (bill?.paymentChannel === "opay" && bill.status === "pending_payment" && bill.transactionReference) {
+      setShouldAutoConfirmOpay(true)
+    }
+  }, [bill?.paymentChannel, bill?.status, bill?.transactionReference])
 
   function submitHostedPayment(endpoint: string, fields: Record<string, string>) {
     const form = document.createElement("form")
@@ -124,13 +133,60 @@ export function BillDetailPage() {
       const response = await initiateOPayPayment({ billId: billId as never })
       setPaymentLink(response.paymentLink)
       setTransactionReference(response.transactionReference)
-      window.location.assign(response.redirectUrl)
+      setShouldAutoConfirmOpay(true)
+      window.open(response.redirectUrl, "_blank", "noopener,noreferrer")
+      toast.success("Complete the OPay payment, then return here and confirm it.")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to start OPay payment.")
     } finally {
       setIsOpayPending(false)
     }
   }
+
+  async function handleConfirmOPayPayment() {
+    if (!transactionReference) {
+      toast.error("Start an OPay payment first to get a transaction reference.")
+      return
+    }
+
+    setIsConfirmingOpay(true)
+    try {
+      const response = await confirmOPayPayment({ reference: transactionReference })
+      if (response.status === "success") {
+        setShouldAutoConfirmOpay(false)
+        toast.success("OPay payment confirmed.")
+        return
+      }
+
+      toast.message("OPay payment is still pending. Retry after the customer completes checkout.")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to confirm OPay payment.")
+    } finally {
+      setIsConfirmingOpay(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!shouldAutoConfirmOpay || !transactionReference) {
+      return
+    }
+
+    const confirmFromFocus = () => {
+      if (document.visibilityState !== "visible" || isConfirmingOpay) {
+        return
+      }
+
+      void handleConfirmOPayPayment()
+    }
+
+    window.addEventListener("focus", confirmFromFocus)
+    document.addEventListener("visibilitychange", confirmFromFocus)
+
+    return () => {
+      window.removeEventListener("focus", confirmFromFocus)
+      document.removeEventListener("visibilitychange", confirmFromFocus)
+    }
+  }, [isConfirmingOpay, shouldAutoConfirmOpay, transactionReference])
 
   async function handleAuthSave() {
     if (!billId) {
@@ -378,8 +434,10 @@ export function BillDetailPage() {
             transactionReference={transactionReference}
             isCardPending={isCardPending}
             isOpayPending={isOpayPending}
+            isConfirmingOpay={isConfirmingOpay}
             onPayWithCard={() => void handleCardPayment()}
             onPayWithOPay={() => void handleOPayPayment()}
+            onConfirmOPay={() => void handleConfirmOPayPayment()}
           />
         </div>
       </div>

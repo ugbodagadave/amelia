@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useAction, useQuery } from "convex/react"
 import { useParams } from "react-router-dom"
 import { CreditCardIcon, WalletIcon } from "@phosphor-icons/react"
@@ -21,9 +21,13 @@ export function PaymentLinkPage() {
   const payment = useQuery(api.payments.getPublicPaymentByToken, token ? { token } : "skip")
   const initiateCardPayment = useAction(api.payments.initiatePublicCardPayment)
   const initiateOPayPayment = useAction(api.payments.initiatePublicOPayPayment)
+  const confirmOPayPayment = useAction(api.payments.confirmOPayPayment)
 
   const [isCardPending, setIsCardPending] = useState(false)
   const [isOpayPending, setIsOpayPending] = useState(false)
+  const [isConfirmingOpay, setIsConfirmingOpay] = useState(false)
+  const [transactionReference, setTransactionReference] = useState<string | null>(null)
+  const [shouldAutoConfirmOpay, setShouldAutoConfirmOpay] = useState(false)
 
   const submitHostedPayment = (endpoint: string, fields: Record<string, string>) => {
     const form = document.createElement("form")
@@ -59,13 +63,68 @@ export function PaymentLinkPage() {
     setIsOpayPending(true)
     try {
       const response = await initiateOPayPayment({ token })
-      window.location.assign(response.redirectUrl)
+      setTransactionReference(response.transactionReference)
+      setShouldAutoConfirmOpay(true)
+      window.open(response.redirectUrl, "_blank", "noopener,noreferrer")
+      toast.success("Complete the OPay payment, then return here and confirm it.")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to start OPay payment.")
     } finally {
       setIsOpayPending(false)
     }
   }
+
+  const handleConfirmOPayPayment = async () => {
+    const reference = transactionReference ?? payment?.transactionReference ?? ""
+
+    if (!reference) {
+      toast.error("Start an OPay payment first to get a transaction reference.")
+      return
+    }
+
+    setIsConfirmingOpay(true)
+    try {
+      const response = await confirmOPayPayment({ reference })
+      if (response.status === "success") {
+        setShouldAutoConfirmOpay(false)
+        toast.success("OPay payment confirmed.")
+        return
+      }
+
+      toast.message("OPay payment is still pending. Retry after the wallet checkout completes.")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to confirm OPay payment.")
+    } finally {
+      setIsConfirmingOpay(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!shouldAutoConfirmOpay) {
+      return
+    }
+
+    const reference = transactionReference ?? payment?.transactionReference ?? ""
+    if (!reference) {
+      return
+    }
+
+    const confirmFromFocus = () => {
+      if (document.visibilityState !== "visible" || isConfirmingOpay) {
+        return
+      }
+
+      void handleConfirmOPayPayment()
+    }
+
+    window.addEventListener("focus", confirmFromFocus)
+    document.addEventListener("visibilitychange", confirmFromFocus)
+
+    return () => {
+      window.removeEventListener("focus", confirmFromFocus)
+      document.removeEventListener("visibilitychange", confirmFromFocus)
+    }
+  }, [isConfirmingOpay, payment?.transactionReference, shouldAutoConfirmOpay, transactionReference])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
@@ -111,6 +170,19 @@ export function PaymentLinkPage() {
                   Pay with OPay
                 </Button>
               </div>
+
+              <Button
+                variant="secondary"
+                onClick={() => void handleConfirmOPayPayment()}
+                disabled={payment.isPaid || isConfirmingOpay}
+              >
+                {isConfirmingOpay ? (
+                  <Spinner data-icon="inline-start" />
+                ) : (
+                  <WalletIcon data-icon="inline-start" />
+                )}
+                Confirm OPay payment
+              </Button>
             </>
           )}
         </CardContent>
