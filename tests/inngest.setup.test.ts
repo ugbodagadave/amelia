@@ -4,6 +4,10 @@ import { INNGEST_APP_ID } from "../src/inngest/client"
 import {
   APP_BOOTSTRAP_PING_EVENT,
   APP_BOOTSTRAP_PING_FUNCTION_ID,
+  BILL_PAYMENT_LINK_SENT_EVENT,
+  BILL_PAYMENT_LINK_SENT_FUNCTION_ID,
+  PAYMENT_CONFIRMED_EVENT,
+  PAYMENT_CONFIRMED_FUNCTION_ID,
   inngestFunctions,
 } from "../src/inngest/functions"
 
@@ -22,6 +26,10 @@ describe("Inngest setup", () => {
 
   test("registers the bootstrap function with a stable id", () => {
     expect(APP_BOOTSTRAP_PING_FUNCTION_ID).toBe("app-bootstrap-ping")
-    expect(inngestFunctions).toHaveLength(1)
+    expect(BILL_PAYMENT_LINK_SENT_EVENT).toBe("bill/payment_link.sent")
+    expect(PAYMENT_CONFIRMED_EVENT).toBe("payment/confirmed")
+    expect(BILL_PAYMENT_LINK_SENT_FUNCTION_ID).toBe("bill-payment-link-sent")
+    expect(PAYMENT_CONFIRMED_FUNCTION_ID).toBe("payment-confirmed")
+    expect(inngestFunctions).toHaveLength(3)
   })
 })

@@ -315,6 +315,124 @@ Virtual Account API is blocked for the hackathon (requires Payment Gateway OAuth
 - Sends SMS reminder to patient with payment link via Africa's Talking
 - Updates bill status to `overdue`
 
+### 4.9 Phase 4 Implementation Plan
+
+**Implementation goal:** Ship the smallest complete payment loop first, then layer identity verification and reminders on top without breaking the existing billing flow.
+
+**What is already confirmed from pre-build testing (`docs/test_integration.md`):**
+- Web Checkout works with Quickteller Business SHA-512 signing
+- `txnref` must stay at or below 15 characters
+- OPay initialize + status polling work in sandbox with no auth header
+- Marketplace OAuth, NIN verification, and bank account verification work
+- Virtual Account API is out of scope for the hackathon
+- Transaction query is not reliable in sandbox, so redirect `ResponseCode` and webhook/callback handling drive reconciliation
+
+**Execution order:**
+
+1. **Foundation: constants, env, and schema extensions**
+- Add Interswitch constants module for endpoints, response codes, payment channels, callback query keys, and transaction reference rules
+- Add shared payment helpers for `amountInKobo`, `buildTxnRef`, `buildWebCheckoutHash`, phone normalization, and callback URL construction
+- Extend `bills` data model only where needed for Phase 4 execution:
+  - payment method metadata
+  - transaction reference
+  - redirect/callback bookkeeping
+  - payment timestamps / provider references
+- Add any missing bill status or payment status constants as typed enums, not magic strings
+- Confirm all server-side credentials are available in Convex env before coding external actions
+
+2. **Backend slice A: Web Checkout action**
+- Create `convex/actions/interswitch.ts` for server-side payment actions
+- Implement `initiateCardPayment(billId)`:
+  - load bill + patient + clinic
+  - enforce payment readiness rules
+  - compute amount in kobo
+  - generate compliant `txnref`
+  - compute SHA-512 hash
+  - persist transaction reference and checkout metadata to the bill
+  - return the exact form payload the frontend needs for hosted checkout POST submission
+- Add pure-function tests first for hash generation, amount conversion, and txnref length
+
+3. **Backend slice B: OPay initialize + confirm**
+- Implement `initiateOPayPayment(billId)`:
+  - reuse the same bill eligibility checks and transaction reference builder
+  - call `https://qa.interswitchng.com/collections/api/v1/opay/initialize`
+  - persist `opayReference`, redirect URL metadata, and pending payment state on success
+- Implement `confirmOPayPayment(reference)`:
+  - call the OPay status endpoint once the patient returns
+  - accept only `responseCode = "00"` as paid
+  - update bill payment fields idempotently
+- Add integration tests against the real sandbox only where credentials are available; keep pure parsing/state tests local
+
+4. **Backend slice C: Marketplace verification**
+- Create a Marketplace auth helper with token caching and expiry buffer
+- Implement `verifyNIN(firstName, lastName, nin)` as a Convex action
+- Implement `listBanks()` and `verifyBankAccount(accountNumber, bankCode)` as Convex actions
+- Keep these APIs isolated from payment actions because they use a separate credential system
+- Decide whether bank verification lands in clinic onboarding immediately or ships behind a UI placeholder in this phase
+
+5. **Backend slice D: webhook + callback reconciliation**
+- Extend `convex/http.ts` with `POST /api/webhooks/interswitch`
+- Verify the webhook signature only if the correct webhook secret is available; otherwise do not pretend validation exists
+- Make webhook processing idempotent:
+  - find bill by transaction reference
+  - ignore duplicates for already-paid bills
+  - record provider payment reference, channel, paid amount, and `paidAt`
+  - trigger `payment/confirmed` Inngest event after the state transition
+- Add a frontend callback route for Web Checkout redirect handling:
+  - read `txnref`, `payRef`, and `ResponseCode`
+  - show success/failure/pending state
+  - reconcile with the backend mutation/action
+- Add a frontend callback route for OPay redirect handling:
+  - detect `status=SUCCESS`
+  - call backend OPay status confirmation
+  - show final payment result
+- Add a patient-facing payment route backed by a signed public payment link so staff can share the bill without requiring Clerk sign-in
+
+6. **Frontend slice: payment UI**
+- Replace the Phase 3 placeholder `PaymentReadinessCard` with a real payment actions card on bill detail
+- Payment UI should support:
+  - `Pay with Card` button
+  - `Pay with OPay` button
+  - clear disabled states for HMO bills awaiting auth
+  - link/copy affordance for sending the patient to hosted checkout on another device
+  - visible transaction reference and payment state for staff
+- Keep bill builder save flow unchanged; payment starts from the saved bill detail page
+- Use existing shadcn building blocks already in the project unless a missing component is truly required
+
+7. **Workflow slice: SMS and reminders**
+- Add Africa's Talking helper in a dedicated server module
+- Add Inngest function for `bill.paymentLinkSent` after payment link creation
+- Add Inngest function for `payment.confirmed` receipt SMS
+- Add scheduled reminder function for 24-hour overdue unpaid bills
+- Keep SMS formatting centralized so clinic name, amount, and link composition stay consistent
+
+8. **Verification and rollout**
+- Test order:
+  - pure helper tests
+  - action-level tests
+  - webhook idempotency tests
+  - redirect/callback UI tests
+  - full `bun test`
+- Manual sandbox verification order:
+  - card checkout redirect success path
+  - OPay success path
+  - invalid webhook signature rejection
+  - duplicate webhook replay
+  - NIN verification exact match / not match
+  - bank resolve happy path
+- Only after payment loop is stable should dashboard/payment analytics wiring in Phase 6 rely on these new fields
+
+### 4.10 Phase 4 Prerequisites Checklist
+
+- [ ] `VITE_APP_URL` set for local and deployed callback URLs
+- [ ] Quickteller Business credentials set in Convex env: `INTERSWITCH_CLIENT_ID`, `INTERSWITCH_SECRET_KEY`, `INTERSWITCH_MERCHANT_CODE`, `INTERSWITCH_PAY_ITEM_ID`, `INTERSWITCH_MAC_KEY`
+- [ ] Marketplace credentials set in Convex env: `ISW_MARKETPLACE_CLIENT_ID`, `ISW_MARKETPLACE_CLIENT_SECRET`, `ISW_MARKETPLACE_BASE_URL`
+- [ ] Africa's Talking credentials set in Convex env: `AT_USERNAME`, `AT_API_KEY`
+- [ ] Inngest production keys set in Convex env: `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`
+- [ ] Clerk issuer configured in Convex env: `CLERK_JWT_ISSUER_DOMAIN`
+- [ ] Public webhook URL available for sandbox verification (`ngrok` or deployed URL)
+- [ ] Interswitch webhook signing secret confirmed, if webhook signature validation is required in this sandbox flow
+
 **Tests for Phase 4:**
 - Web checkout: hash generation produces valid SHA-512 for known inputs
 - Web checkout: txnref format always ≤ 15 chars

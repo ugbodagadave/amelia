@@ -169,8 +169,13 @@ export const getById = query({
         enrolleeNhisNo: patient.enrolleeNhisNo ?? null,
         maskedNin: maskNin(patient.nin),
       },
-      items: items.sort((left, right) => left.createdAt - right.createdAt),
-      medications: medications.sort((left, right) => left.createdAt - right.createdAt),
+      items: items.sort(
+        (left: Doc<"bill_items">, right: Doc<"bill_items">) => left.createdAt - right.createdAt,
+      ),
+      medications: medications.sort(
+        (left: Doc<"bill_medications">, right: Doc<"bill_medications">) =>
+          left.createdAt - right.createdAt,
+      ),
       statusLabel: formatBillStatusLabel(bill.status),
     }
   },

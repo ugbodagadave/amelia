@@ -5,6 +5,9 @@ export const CLINIC_ONBOARDING_REQUIRED_FIELDS = [
   "phone",
   "email",
   "medicalDirectorName",
+  "bankCode",
+  "accountNumber",
+  "accountName",
 ] as const
 
 export type ClinicOnboardingField =
@@ -23,6 +26,11 @@ export interface ClinicOnboardingInput {
   phone: string
   email: string
   medicalDirectorName: string
+  bankCode: string
+  bankName: string
+  accountNumber: string
+  accountName: string
+  bankAccountVerified: boolean
 }
 
 export interface SeededServiceCatalogItem {
@@ -166,8 +174,11 @@ export function validateClinicOnboardingInput(
   input: ClinicOnboardingInput,
 ): Partial<Record<ClinicOnboardingField, string>> {
   const errors: Partial<Record<ClinicOnboardingField, string>> = {}
+  const genericRequiredFields = CLINIC_ONBOARDING_REQUIRED_FIELDS.filter(
+    (field) => !["bankCode", "accountNumber", "accountName"].includes(field),
+  )
 
-  for (const field of CLINIC_ONBOARDING_REQUIRED_FIELDS) {
+  for (const field of genericRequiredFields) {
     if (!input[field].trim()) {
       errors[field] = "This field is required."
     }
@@ -179,6 +190,23 @@ export function validateClinicOnboardingInput(
 
   if (!errors.phone && !PHONE_PATTERN.test(input.phone.trim())) {
     errors.phone = "Enter a valid Nigerian phone number."
+  }
+
+  if (!errors.accountNumber && !/^\d{10}$/.test(input.accountNumber.trim())) {
+    errors.accountNumber = input.accountNumber.trim()
+      ? "Account number must be 10 digits."
+      : "Account number is required."
+  }
+
+  if (!errors.bankCode && !input.bankCode.trim()) {
+    errors.bankCode = "Select a bank."
+  }
+
+  if (
+    !errors.accountName &&
+    (!input.accountName.trim() || !input.bankAccountVerified)
+  ) {
+    errors.accountName = "Resolve and confirm the clinic payout account."
   }
 
   return errors

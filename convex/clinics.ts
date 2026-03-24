@@ -41,6 +41,10 @@ export const createClinic = mutation({
     phone: v.string(),
     email: v.string(),
     medicalDirectorName: v.string(),
+    bankCode: v.string(),
+    bankName: v.string(),
+    accountNumber: v.string(),
+    accountName: v.string(),
   },
   returns: v.object({ clinicId: v.id("clinics") }),
   handler: async (ctx, args) => {

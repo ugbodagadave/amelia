@@ -17,6 +17,8 @@ const claimBatchStatusValidator = v.union(
   v.literal("overdue"),
 )
 
+const paymentChannelValidator = v.union(v.literal("card"), v.literal("opay"))
+
 export default defineSchema({
   clinics: defineTable({
     name: v.string(),
@@ -25,6 +27,10 @@ export default defineSchema({
     medicalDirectorName: v.string(),
     phone: v.string(),
     email: v.string(),
+    bankCode: v.string(),
+    bankName: v.string(),
+    accountNumber: v.string(),
+    accountName: v.string(),
     createdByClerkUserId: v.string(),
     createdAt: v.number(),
   })
@@ -89,17 +95,25 @@ export default defineSchema({
     authorizationCode: v.optional(v.string()),
     authCodeReceivedAt: v.optional(v.number()),
     status: statusValidator,
+    paymentChannel: v.optional(paymentChannelValidator),
+    transactionReference: v.optional(v.string()),
     webCheckoutHash: v.optional(v.string()),
     opayReference: v.optional(v.string()),
     interswitchRef: v.optional(v.string()),
     paymentLink: v.optional(v.string()),
+    paymentLinkToken: v.optional(v.string()),
+    paymentLinkTokenIssuedAt: v.optional(v.number()),
     qrCode: v.optional(v.string()),
+    paymentInitiatedAt: v.optional(v.number()),
+    providerPaymentReference: v.optional(v.string()),
+    paidAmount: v.optional(v.number()),
     paidAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_clinic", ["clinicId"])
     .index("by_clinic_and_status", ["clinicId", "status"])
-    .index("by_clinic_and_patient", ["clinicId", "patientId"]),
+    .index("by_clinic_and_patient", ["clinicId", "patientId"])
+    .index("by_payment_link_token", ["paymentLinkToken"]),
 
   bill_items: defineTable({
     clinicId: v.id("clinics"),

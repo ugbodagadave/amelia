@@ -1,40 +1,97 @@
-import { CreditCardIcon } from "@phosphor-icons/react"
+import { CopyIcon, CreditCardIcon, LockSimpleIcon, WalletIcon } from "@phosphor-icons/react"
+import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BILL_STATUS, type BillStatus } from "@/lib/billing"
 
+interface PaymentReadinessCardProps {
+  status: BillStatus
+  hasAuthCode: boolean
+  paymentType: "self_pay" | "hmo"
+  paymentLink?: string | null
+  transactionReference?: string | null
+  isCardPending?: boolean
+  isOpayPending?: boolean
+  onPayWithCard: () => void
+  onPayWithOPay: () => void
+}
+
 export function PaymentReadinessCard({
   status,
   hasAuthCode,
-}: {
-  status: BillStatus
-  hasAuthCode: boolean
-}) {
-  const readyForPhaseFour =
-    status === BILL_STATUS.PENDING_PAYMENT || status === BILL_STATUS.AUTH_CONFIRMED || hasAuthCode
+  paymentType,
+  paymentLink,
+  transactionReference,
+  isCardPending = false,
+  isOpayPending = false,
+  onPayWithCard,
+  onPayWithOPay,
+}: PaymentReadinessCardProps) {
+  const isBlocked =
+    paymentType === "hmo" && (status === BILL_STATUS.AWAITING_AUTH || !hasAuthCode)
+
+  const copyPaymentLink = async () => {
+    if (!paymentLink) {
+      return
+    }
+
+    await navigator.clipboard.writeText(paymentLink)
+    toast.success("Payment link copied.")
+  }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="font-mono text-base">Payment panel</CardTitle>
         <CardDescription>
-          Payment collection lands in Phase 4. This panel only shows readiness in Phase 3.
+          Generate a patient-facing payment link, redirect into Interswitch hosted checkout,
+          or send the patient to OPay from the saved bill.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <Alert>
-          <CreditCardIcon />
-          <AlertTitle>{readyForPhaseFour ? "Ready for collection" : "Not ready yet"}</AlertTitle>
-          <AlertDescription>
-            {readyForPhaseFour
-              ? "This bill is structurally ready for Web Checkout and OPay once Phase 4 is added."
-              : "HMO bills need an auth code before payment collection can begin."}
-          </AlertDescription>
-        </Alert>
-        <Button disabled>
-          <CreditCardIcon data-icon="inline-start" />
-          Payment actions unlock in Phase 4
+        {isBlocked ? (
+          <Alert>
+            <LockSimpleIcon />
+            <AlertTitle>Payment blocked</AlertTitle>
+            <AlertDescription>
+              HMO bills must stay locked until the clinic confirms the authorization code.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Alert>
+            <CreditCardIcon />
+            <AlertTitle>Ready for collection</AlertTitle>
+            <AlertDescription>
+              Staff can launch Web Checkout, redirect to OPay, or copy the public payment link
+              for the patient.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {transactionReference ? (
+          <div className="rounded-none border p-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Transaction reference
+            </p>
+            <p className="font-mono text-sm">{transactionReference}</p>
+          </div>
+        ) : null}
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Button onClick={onPayWithCard} disabled={isBlocked || isCardPending}>
+            <CreditCardIcon data-icon="inline-start" />
+            Pay with Card
+          </Button>
+          <Button variant="outline" onClick={onPayWithOPay} disabled={isBlocked || isOpayPending}>
+            <WalletIcon data-icon="inline-start" />
+            Pay with OPay
+          </Button>
+        </div>
+
+        <Button variant="secondary" onClick={() => void copyPaymentLink()} disabled={!paymentLink}>
+          <CopyIcon data-icon="inline-start" />
+          Copy payment link
         </Button>
       </CardContent>
     </Card>

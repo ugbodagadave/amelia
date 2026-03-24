@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values"
-import type { MutationCtx, QueryCtx } from "../_generated/server"
+import type { ActionCtx, MutationCtx, QueryCtx } from "../_generated/server"
 
-type AuthenticatedCtx = MutationCtx | QueryCtx
+type AuthenticatedCtx = MutationCtx | QueryCtx | ActionCtx
 
 export async function requireClerkUserId(ctx: AuthenticatedCtx) {
   const identity = await ctx.auth.getUserIdentity()

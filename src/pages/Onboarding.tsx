@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useUser } from "@clerk/clerk-react"
-import { useMutation, useQuery } from "convex/react"
+import { useAction, useMutation, useQuery } from "convex/react"
 import { Navigate, useNavigate } from "react-router-dom"
 import {
   BuildingsIcon,
@@ -20,6 +20,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -30,6 +38,11 @@ const INITIAL_FORM_STATE: ClinicOnboardingInput = {
   phone: "",
   email: "",
   medicalDirectorName: "",
+  bankCode: "",
+  bankName: "",
+  accountNumber: "",
+  accountName: "",
+  bankAccountVerified: false,
 }
 
 const ONBOARDING_HIGHLIGHTS = [
@@ -55,19 +68,72 @@ export function ClinicOnboardingPage() {
   const { user } = useUser()
   const createClinic = useMutation(api.clinics.createClinic)
   const currentClinic = useQuery(api.clinics.getCurrentClinic)
+  const listBanks = useAction(api.payments.listBanks)
+  const verifyBankAccount = useAction(api.payments.verifyBankAccount)
 
   const [formState, setFormState] = useState(INITIAL_FORM_STATE)
   const [errors, setErrors] = useState<Partial<Record<ClinicOnboardingField, string>>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [bankOptions, setBankOptions] = useState<Array<{ name: string; code: string }>>([])
+  const [isLoadingBanks, setIsLoadingBanks] = useState(false)
+  const [isResolvingAccount, setIsResolvingAccount] = useState(false)
 
   if (currentClinic) {
     return <Navigate to={ROUTES.DASHBOARD} replace />
   }
 
-  const handleChange = (field: ClinicOnboardingField, value: string) => {
+  const handleChange = (field: ClinicOnboardingField, value: string | boolean) => {
     setFormState((current) => ({ ...current, [field]: value }))
     setErrors((current) => ({ ...current, [field]: undefined }))
+  }
+
+  const loadBanks = async () => {
+    if (bankOptions.length > 0 || isLoadingBanks) {
+      return
+    }
+
+    setIsLoadingBanks(true)
+    try {
+      const banks = await listBanks()
+      setBankOptions(banks)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to load bank options.")
+    } finally {
+      setIsLoadingBanks(false)
+    }
+  }
+
+  const handleResolveAccount = async () => {
+    setIsResolvingAccount(true)
+    try {
+      const result = await verifyBankAccount({
+        accountNumber: formState.accountNumber,
+        bankCode: formState.bankCode,
+      })
+
+      setFormState((current) => ({
+        ...current,
+        accountName: result.accountName,
+        bankAccountVerified: Boolean(result.accountName),
+      }))
+      setErrors((current) => ({
+        ...current,
+        bankCode: undefined,
+        accountNumber: undefined,
+        accountName: undefined,
+      }))
+      toast.success("Bank account verified.")
+    } catch (error) {
+      setFormState((current) => ({
+        ...current,
+        accountName: "",
+        bankAccountVerified: false,
+      }))
+      toast.error(error instanceof Error ? error.message : "Unable to verify account.")
+    } finally {
+      setIsResolvingAccount(false)
+    }
   }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -84,7 +150,18 @@ export function ClinicOnboardingPage() {
     setIsSubmitting(true)
 
     try {
-      const result = await createClinic(formState)
+      const result = await createClinic({
+        name: formState.name,
+        address: formState.address,
+        nhiaFacilityCode: formState.nhiaFacilityCode,
+        phone: formState.phone,
+        email: formState.email,
+        medicalDirectorName: formState.medicalDirectorName,
+        bankCode: formState.bankCode,
+        bankName: formState.bankName,
+        accountNumber: formState.accountNumber,
+        accountName: formState.accountName,
+      })
 
       if (user) {
         try {
@@ -285,6 +362,94 @@ export function ClinicOnboardingPage() {
                     <p className="text-xs text-destructive">{errors.medicalDirectorName}</p>
                   ) : null}
                 </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <label className="text-xs font-medium text-foreground" htmlFor="clinic-bank">
+                    Payout bank
+                  </label>
+                  <Select
+                    value={formState.bankCode}
+                    onOpenChange={(open) => {
+                      if (open) {
+                        void loadBanks()
+                      }
+                    }}
+                    onValueChange={(value) => {
+                      const selectedBank = bankOptions.find((bank) => bank.code === value)
+                      setFormState((current) => ({
+                        ...current,
+                        bankCode: value,
+                        bankName: selectedBank?.name ?? "",
+                        accountName: "",
+                        bankAccountVerified: false,
+                      }))
+                      setErrors((current) => ({ ...current, bankCode: undefined, accountName: undefined }))
+                    }}
+                  >
+                    <SelectTrigger id="clinic-bank" aria-invalid={Boolean(errors.bankCode)}>
+                      <SelectValue
+                        placeholder={isLoadingBanks ? "Loading banks..." : "Select payout bank"}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {bankOptions.map((bank) => (
+                          <SelectItem key={bank.code} value={bank.code}>
+                            {bank.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  {errors.bankCode ? (
+                    <p className="text-xs text-destructive">{errors.bankCode}</p>
+                  ) : null}
+                </div>
+
+                <div className="grid gap-2">
+                  <label className="text-xs font-medium text-foreground" htmlFor="clinic-account">
+                    Payout account number
+                  </label>
+                  <Input
+                    id="clinic-account"
+                    value={formState.accountNumber}
+                    onChange={(event) =>
+                      handleChange("accountNumber", event.target.value.replace(/\D/g, "").slice(0, 10))
+                    }
+                    aria-invalid={Boolean(errors.accountNumber)}
+                    placeholder="0123456789"
+                    inputMode="numeric"
+                  />
+                  {errors.accountNumber ? (
+                    <p className="text-xs text-destructive">{errors.accountNumber}</p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="grid gap-3 border p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-1">
+                    <p className="text-xs font-medium text-foreground">Resolved account name</p>
+                    <p className="text-sm text-muted-foreground">
+                      Confirm the clinic payout destination before continuing.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void handleResolveAccount()}
+                    disabled={isResolvingAccount}
+                  >
+                    {isResolvingAccount ? <Spinner data-icon="inline-start" /> : null}
+                    Verify account
+                  </Button>
+                </div>
+                <Input value={formState.accountName} readOnly placeholder="Account name will appear here" />
+                {errors.accountName ? (
+                  <p className="text-xs text-destructive">{errors.accountName}</p>
+                ) : null}
               </div>
 
               <Button className="mt-2 w-full sm:w-auto" disabled={isSubmitting} type="submit">

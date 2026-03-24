@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { useMutation, useQuery } from "convex/react"
+import { useAction, useMutation, useQuery } from "convex/react"
 import { CheckCircleIcon, FileTextIcon, UserCircleIcon } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { api } from "../../convex/_generated/api"
@@ -56,16 +56,81 @@ export function BillDetailPage() {
   const bill = useQuery(api.bills.getById, billId ? { billId: billId as never } : "skip")
   const confirmAuthCode = useMutation(api.bills.confirmAuthCode)
   const changeAuthCode = useMutation(api.bills.changeAuthCode)
+  const initiateCardPayment = useAction(api.payments.initiateCardPayment)
+  const initiateOPayPayment = useAction(api.payments.initiateOPayPayment)
 
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false)
   const [authCodeDraft, setAuthCodeDraft] = useState("")
   const [isSavingAuth, setIsSavingAuth] = useState(false)
+  const [isCardPending, setIsCardPending] = useState(false)
+  const [isOpayPending, setIsOpayPending] = useState(false)
+  const [paymentLink, setPaymentLink] = useState<string | null>(null)
+  const [transactionReference, setTransactionReference] = useState<string | null>(null)
 
   useEffect(() => {
     if (bill?.authorizationCode) {
       setAuthCodeDraft(bill.authorizationCode)
     }
   }, [bill?.authorizationCode])
+
+  useEffect(() => {
+    setPaymentLink(bill?.paymentLink ?? null)
+    setTransactionReference(bill?.transactionReference ?? null)
+  }, [bill?.paymentLink, bill?.transactionReference])
+
+  function submitHostedPayment(endpoint: string, fields: Record<string, string>) {
+    const form = document.createElement("form")
+    form.method = "POST"
+    form.action = endpoint
+
+    for (const [key, value] of Object.entries(fields)) {
+      const input = document.createElement("input")
+      input.type = "hidden"
+      input.name = key
+      input.value = value
+      form.appendChild(input)
+    }
+
+    document.body.appendChild(form)
+    form.submit()
+    form.remove()
+  }
+
+  async function handleCardPayment() {
+    if (!billId) {
+      return
+    }
+
+    setIsCardPending(true)
+    try {
+      const response = await initiateCardPayment({ billId: billId as never })
+      setPaymentLink(response.paymentLink)
+      setTransactionReference(response.transactionReference)
+      submitHostedPayment(response.endpoint, response.fields)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to start card payment.")
+    } finally {
+      setIsCardPending(false)
+    }
+  }
+
+  async function handleOPayPayment() {
+    if (!billId) {
+      return
+    }
+
+    setIsOpayPending(true)
+    try {
+      const response = await initiateOPayPayment({ billId: billId as never })
+      setPaymentLink(response.paymentLink)
+      setTransactionReference(response.transactionReference)
+      window.location.assign(response.redirectUrl)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to start OPay payment.")
+    } finally {
+      setIsOpayPending(false)
+    }
+  }
 
   async function handleAuthSave() {
     if (!billId) {
@@ -308,6 +373,13 @@ export function BillDetailPage() {
           <PaymentReadinessCard
             status={bill.status}
             hasAuthCode={!!bill.authorizationCode}
+            paymentType={bill.patient.paymentType}
+            paymentLink={paymentLink}
+            transactionReference={transactionReference}
+            isCardPending={isCardPending}
+            isOpayPending={isOpayPending}
+            onPayWithCard={() => void handleCardPayment()}
+            onPayWithOPay={() => void handleOPayPayment()}
           />
         </div>
       </div>

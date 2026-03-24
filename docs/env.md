@@ -44,6 +44,7 @@ INTERSWITCH_SECRET_KEY=your_secret_key
 INTERSWITCH_MERCHANT_CODE=MXxxxxxx
 INTERSWITCH_PAY_ITEM_ID=Default_Payable_MXxxxxxx
 INTERSWITCH_MAC_KEY=your_mac_key
+INTERSWITCH_WEBHOOK_SECRET=your_webhook_secret
 ```
 
 **Where to get it:** `business.quickteller.com` → Settings.
@@ -160,6 +161,7 @@ VITE_APP_URL=http://localhost:5173                # development
 | `INTERSWITCH_MERCHANT_CODE` | Convex actions | ✅ |
 | `INTERSWITCH_PAY_ITEM_ID` | Convex actions | ✅ |
 | `INTERSWITCH_MAC_KEY` | Convex actions | ✅ |
+| `INTERSWITCH_WEBHOOK_SECRET` | Convex HTTP action | ✅ |
 | `ISW_MARKETPLACE_CLIENT_ID` | Convex actions | ✅ |
 | `ISW_MARKETPLACE_CLIENT_SECRET` | Convex actions | ✅ |
 | `ISW_MARKETPLACE_BASE_URL` | Convex actions | ✅ |
@@ -184,6 +186,7 @@ npx convex env set INTERSWITCH_SECRET_KEY "your_value"
 npx convex env set INTERSWITCH_MERCHANT_CODE "your_value"
 npx convex env set INTERSWITCH_PAY_ITEM_ID "your_value"
 npx convex env set INTERSWITCH_MAC_KEY "your_value"
+npx convex env set INTERSWITCH_WEBHOOK_SECRET "your_value"
 npx convex env set ISW_MARKETPLACE_CLIENT_ID "your_value"
 npx convex env set ISW_MARKETPLACE_CLIENT_SECRET "your_value"
 npx convex env set ISW_MARKETPLACE_BASE_URL "https://qa.interswitchng.com"
@@ -217,6 +220,7 @@ INTERSWITCH_SECRET_KEY=
 INTERSWITCH_MERCHANT_CODE=
 INTERSWITCH_PAY_ITEM_ID=
 INTERSWITCH_MAC_KEY=
+INTERSWITCH_WEBHOOK_SECRET=
 
 # INTERSWITCH — Developer Marketplace (Identity) (set via `npx convex env set`)
 ISW_MARKETPLACE_CLIENT_ID=

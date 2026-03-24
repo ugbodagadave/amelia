@@ -20,6 +20,9 @@ describe("Phase 1 — Clinic onboarding validation", () => {
       "phone",
       "email",
       "medicalDirectorName",
+      "bankCode",
+      "accountNumber",
+      "accountName",
     ])
   })
 
@@ -31,11 +34,19 @@ describe("Phase 1 — Clinic onboarding validation", () => {
       phone: "+2348012345678",
       email: "hello@clinic.test",
       medicalDirectorName: "",
+      bankCode: "",
+      bankName: "",
+      accountNumber: "",
+      accountName: "",
+      bankAccountVerified: false,
     })
 
     expect(result.name).toBeDefined()
     expect(result.nhiaFacilityCode).toBeDefined()
     expect(result.medicalDirectorName).toBeDefined()
+    expect(result.bankCode).toBeDefined()
+    expect(result.accountNumber).toBeDefined()
+    expect(result.accountName).toBeDefined()
   })
 
   test("validation accepts a complete onboarding payload", () => {
@@ -46,6 +57,11 @@ describe("Phase 1 — Clinic onboarding validation", () => {
       phone: "+2348012345678",
       email: "hello@clinic.test",
       medicalDirectorName: "Dr. A. Bello",
+      bankCode: "058",
+      bankName: "Guaranty Trust Bank",
+      accountNumber: "0123456789",
+      accountName: "APEX CLINIC",
+      bankAccountVerified: true,
     })
 
     expect(result).toEqual({})
