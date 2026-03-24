@@ -24,10 +24,12 @@ export const listForClinic = query({
   handler: async (ctx) => {
     const clinicId = await getCurrentClinicId(ctx)
 
-    return await ctx.db
+    const services = await ctx.db
       .query("service_catalog")
       .withIndex("by_clinic", (q) => q.eq("clinicId", clinicId))
       .collect()
+
+    return [...services].sort((left, right) => left.name.localeCompare(right.name))
   },
 })
 

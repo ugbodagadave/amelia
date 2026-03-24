@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 export function DashboardPage() {
   const clinic = useQuery(api.clinics.getCurrentClinic)
   const services = useQuery(api.serviceCatalog.listForClinic)
+  type ServiceCatalogItem = NonNullable<typeof services>[number]
 
   if (clinic === undefined || services === undefined) {
     return (
@@ -57,7 +58,7 @@ export function DashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          {services.slice(0, 8).map((service) => (
+          {services.slice(0, 8).map((service: ServiceCatalogItem) => (
             <Badge key={service._id} variant="secondary">
               {service.name}
             </Badge>

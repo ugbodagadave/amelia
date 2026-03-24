@@ -34,6 +34,12 @@ import {
 } from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
 import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
+} from "@/components/ui/input-group"
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -82,6 +88,7 @@ export function SettingsPage() {
   const services = useQuery(api.serviceCatalog.listForClinic)
   const upsertService = useMutation(api.serviceCatalog.upsertService)
   const removeService = useMutation(api.serviceCatalog.removeService)
+  type ServiceCatalogItem = NonNullable<typeof services>[number]
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -204,7 +211,7 @@ export function SettingsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {services.map((service) => (
+                {services.map((service: ServiceCatalogItem) => (
                   <TableRow key={service._id}>
                     <TableCell className="font-medium">{service.name}</TableCell>
                     <TableCell className="capitalize">
@@ -302,19 +309,24 @@ export function SettingsPage() {
               <label className="text-xs font-medium text-foreground" htmlFor="service-price">
                 Default price
               </label>
-              <Input
-                id="service-price"
-                inputMode="numeric"
-                type="text"
-                value={formState.defaultPrice}
-                onChange={(event) =>
-                  setFormState((current) => ({
-                    ...current,
-                    defaultPrice: formatPriceInput(event.target.value),
-                  }))
-                }
-                placeholder="10,000"
-              />
+              <InputGroup>
+                <InputGroupAddon>
+                  <InputGroupText>₦</InputGroupText>
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="service-price"
+                  inputMode="numeric"
+                  type="text"
+                  value={formState.defaultPrice}
+                  onChange={(event) =>
+                    setFormState((current) => ({
+                      ...current,
+                      defaultPrice: formatPriceInput(event.target.value),
+                    }))
+                  }
+                  placeholder="10,000"
+                />
+              </InputGroup>
             </div>
 
             <Button disabled={isSaving} type="submit">
