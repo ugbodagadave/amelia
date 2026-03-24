@@ -8,8 +8,12 @@
  * @module
  */
 
+import type * as clinics from "../clinics.js";
 import type * as http from "../http.js";
 import type * as inngestClient from "../inngestClient.js";
+import type * as lib_auth from "../lib/auth.js";
+import type * as patients from "../patients.js";
+import type * as serviceCatalog from "../serviceCatalog.js";
 
 import type {
   ApiFromModules,
@@ -18,8 +22,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  clinics: typeof clinics;
   http: typeof http;
   inngestClient: typeof inngestClient;
+  "lib/auth": typeof lib_auth;
+  patients: typeof patients;
+  serviceCatalog: typeof serviceCatalog;
 }>;
 
 /**

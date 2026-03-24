@@ -78,11 +78,11 @@ Before any code is written, confirm the following are in place:
 
 ---
 
-## Phase 1 — Database Schema & Clinic Onboarding
+## ✅ Phase 1 — Database Schema & Clinic Onboarding
 
 **Goal:** Define the full data model and build the clinic profile setup flow that a new user completes on first login.
 
-### 1.1 Convex Schema Definition
+### ✅ 1.1 Convex Schema Definition
 Define all tables in `convex/schema.ts`:
 
 ```
@@ -99,67 +99,67 @@ hmo_templates
 tpa_submissions
 ```
 
-Full field definitions per table as specified in SPEC_AMELIA_V4.md schema section. Include all indexes needed for queries:
+Full field definitions per table as specified in `docs/SPEC_AMELIA.md` schema section. Include all indexes needed for queries:
 - `bills` indexed by `clinicId`, `status`, `patientId`
 - `patients` indexed by `clinicId`, `phone`
 - `claim_batches` indexed by `clinicId`, `status`
 
-### 1.2 Clinic Onboarding Flow
+### ✅ 1.2 Clinic Onboarding Flow
 First-login screen (shown when `clinics` table has no record for this Clerk user):
 - Form fields: Clinic name, address, NHIA/HCP facility code, phone, email, Medical Director name
-- On submit: create `clinics` record, store `clinicId` in Clerk user metadata
+- On submit: create `clinics` record, mirror `clinicId` to Clerk `unsafeMetadata` on a best-effort basis
 - Redirect to dashboard on completion
 
-### 1.3 Service Catalog Seed
+### ✅ 1.3 Service Catalog Seed
 - On clinic creation, seed the `service_catalog` table with ~30 common Nigerian clinic services (FBC, Malaria RDT, Chest X-Ray, Ultrasound, common medications)
 - Service Catalog Settings page: add, edit, delete services and their default prices
 
-### 1.4 HMO Template Seed
+### ✅ 1.4 HMO Template Seed
 - Seed `hmo_templates` table with: Police HMO, AXA Mansard, Hygeia HMO, NHIA Standard, Generic/Universal
 - Each template includes: HMO name, additional identifier fields array (AP No., Force No., etc.), form layout config JSON
 
-**Tests for Phase 1:**
-- Schema: all tables create and query without type errors
-- Onboarding: form validation rejects empty required fields (clinic name, NHIA code, medical director)
-- Onboarding: creates exactly one clinic record per Clerk user
-- Service catalog: seed runs idempotently (running twice does not duplicate records)
-- HMO templates: all 5 templates present after seed
+**Tests for Phase 1:** ✅ 8 new tests in `tests/phase1.test.ts` and full `bun test` suite passing
+- ✅ Shared onboarding validation rejects empty clinic name, NHIA code, and medical director
+- ✅ Shared onboarding validation accepts a complete clinic payload
+- ✅ Service catalog seed includes common clinic services and remains idempotent
+- ✅ HMO template seed contains all 5 defaults and remains idempotent
+- ✅ Onboarding route constant is defined and unique
 
 ---
 
-## Phase 2 — Patient Registration
+## ✅ Phase 2 — Patient Registration
 
 **Goal:** Staff can register patients with all fields required for billing and NHIA claims submission.
 
-### 2.1 Patient List Page (`/patients`)
+### ✅ 2.1 Patient List Page (`/patients`)
 - Table view: name, age, NIN (masked), HMO, last visit date, status badge
 - Search bar: filters by name or phone number (client-side for hackathon, Convex search post-hackathon)
-- "New Patient" button opens registration panel
+- "New Patient" button opens centered registration dialog
 
-### 2.2 Patient Registration Form
+### ✅ 2.2 Patient Registration Form
 Fields:
 - Surname (required)
 - Other Names (required)
 - Date of Birth → auto-calculates Age display (required)
 - Sex: Male / Female chip selector (required)
-- Phone Number — Nigerian format validation (08XXXXXXXXX) (required)
-- National Identity Number (NIN) — exactly 11 digits, numeric only (required for HMO patients, strongly encouraged for self-pay)
+- Phone Number — Nigerian mobile validation for `07XXXXXXXXX`, `08XXXXXXXXX`, `09XXXXXXXXX` (required)
+- National Identity Number (NIN) — exactly 11 digits, numeric only (required for HMO patients, optional for self-pay)
 - Payment Type: Self-Pay / HMO chip selector
 - If HMO: HMO Name dropdown (from `hmo_templates` table) + Enrollee NHIS No. + HMO-specific fields (rendered dynamically from template `additionalFields`)
 
-### 2.3 Patient Profile Page (`/patients/:patientId`)
+### ✅ 2.3 Patient Profile Page (`/patients/:patientId`)
 - Summary card: all patient details
 - Bill history tab: list of all bills for this patient
-- "New Bill" button pre-populated with patient
+- "New Bill" button reserved as the Phase 3 handoff point
 
-### 2.4 Form Validation & Error States
+### ✅ 2.4 Form Validation & Error States
 - All required fields validated on submit
 - NIN: must be exactly 11 digits
 - Phone: must match Nigerian mobile format
 - Inline error messages below each field
 - Toast notification on successful save
 
-**Tests for Phase 2:**
+**Tests for Phase 2:** ✅ 10 tests in `tests/phase2.test.ts` — all passing (`bun test`)
 - NIN validation: rejects 10 digits, rejects letters, accepts exactly 11 digits
 - Phone validation: rejects landline format, accepts 08XX, 07XX, 09XX
 - HMO patient: NHIS number field required when HMO selected

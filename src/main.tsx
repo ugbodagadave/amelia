@@ -4,6 +4,7 @@ import { ClerkProvider, useAuth } from "@clerk/clerk-react"
 import { ConvexProviderWithClerk } from "convex/react-clerk"
 import { ConvexReactClient } from "convex/react"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { Toaster } from "@/components/ui/sonner"
 import "./index.css"
 import App from "./App.tsx"
 import { ROUTES } from "@/constants/routes"
@@ -17,6 +18,7 @@ createRoot(document.getElementById("root")!).render(
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <TooltipProvider delayDuration={0}>
           <App />
+          <Toaster position="top-right" />
         </TooltipProvider>
       </ConvexProviderWithClerk>
     </ClerkProvider>

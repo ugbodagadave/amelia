@@ -14,6 +14,7 @@ import { useDarkMode } from "@/hooks/useDarkMode"
 import { ROUTES } from "@/constants/routes"
 
 const PAGE_TITLES: Record<string, string> = {
+  [ROUTES.ONBOARDING]: "Clinic Onboarding",
   [ROUTES.DASHBOARD]: "Dashboard",
   [ROUTES.PATIENTS]:  "Patients",
   [ROUTES.BILLS]:     "Bills",
@@ -26,10 +27,12 @@ const PAGE_TITLES: Record<string, string> = {
 export function Topbar() {
   const { pathname } = useLocation()
   const { isDark, toggle } = useDarkMode()
-  const title = PAGE_TITLES[pathname] ?? "Amelia"
+  const title = pathname.startsWith(`${ROUTES.PATIENTS}/`)
+    ? "Patient Profile"
+    : (PAGE_TITLES[pathname] ?? "Amelia")
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-2 border-b bg-background/95 backdrop-blur transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
       <div className="flex flex-1 items-center gap-2 px-4">
         <SidebarTrigger className="-ml-1" />
         <Separator

@@ -10,10 +10,12 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="h-screen overflow-hidden">
         <Topbar />
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          {children}
+        <div className="flex flex-1 flex-col overflow-y-auto">
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            {children}
+          </div>
         </div>
       </SidebarInset>
     </SidebarProvider>

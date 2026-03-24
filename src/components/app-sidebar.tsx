@@ -60,7 +60,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const navItems = NAV_ITEMS.map((item) => ({
     ...item,
-    isActive: pathname === item.url,
+    isActive:
+      pathname === item.url ||
+      (item.url === ROUTES.PATIENTS && pathname.startsWith(`${ROUTES.PATIENTS}/`)),
   }))
 
   const initials = user?.fullName
