@@ -68,7 +68,7 @@ export const list = query({
       }),
     )
 
-    return listItems.sort((left, right) => right.createdAt - left.createdAt)
+    return [...listItems].sort((left, right) => left.fullName.localeCompare(right.fullName))
   },
 })
 

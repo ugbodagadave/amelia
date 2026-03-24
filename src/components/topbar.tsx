@@ -1,5 +1,6 @@
 import { Fragment } from "react"
 import { Link, useLocation } from "react-router-dom"
+import { useQuery } from "convex/react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -19,7 +20,10 @@ import {
   ReceiptIcon,
   PlusIcon,
   FileTextIcon,
+  UsersIcon,
+  UserCircleIcon,
 } from "@phosphor-icons/react"
+import { api } from "../../convex/_generated/api"
 import { useDarkMode } from "@/hooks/useDarkMode"
 import { ROUTES } from "@/constants/routes"
 
@@ -38,10 +42,15 @@ const PAGE_TITLES: Record<string, string> = {
 export function Topbar() {
   const { pathname } = useLocation()
   const { isDark, toggle } = useDarkMode()
+  const patientId = pathname.startsWith("/patients/") ? pathname.split("/")[2] ?? null : null
+  const patient = useQuery(
+    api.patients.getById,
+    patientId ? { patientId: patientId as never } : "skip",
+  )
   const title = pathname === ROUTES.BILLS_NEW
     ? PAGE_TITLES[ROUTES.BILLS_NEW]
     : pathname.startsWith(`${ROUTES.PATIENTS}/`)
-      ? "Patient Profile"
+      ? patient?.fullName ?? "Patient Profile"
       : pathname.startsWith("/bills/")
         ? "Bill Detail"
         : (PAGE_TITLES[pathname] ?? "Amelia")
@@ -81,6 +90,23 @@ export function Topbar() {
               icon: <FileTextIcon />,
             },
           ]
+        : pathname.startsWith("/patients/") && pathname !== ROUTES.PATIENTS
+          ? [
+              {
+                label: "Home",
+                to: ROUTES.DASHBOARD,
+                icon: <HouseIcon />,
+              },
+              {
+                label: "Patients",
+                to: ROUTES.PATIENTS,
+                icon: <UsersIcon />,
+              },
+              {
+                label: patient?.fullName ?? "Patient Profile",
+                icon: <UserCircleIcon />,
+              },
+            ]
         : null
 
   return (

@@ -1,5 +1,5 @@
 import { startTransition, useDeferredValue, useState } from "react"
-import { Link } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { useMutation, useQuery } from "convex/react"
 import {
   IdentificationCardIcon,
@@ -121,6 +121,7 @@ function syncAdditionalFields(
 }
 
 export function PatientsPage() {
+  const navigate = useNavigate()
   const patients = useQuery(api.patients.list)
   const hmoTemplates = useQuery(api.patients.listHmoTemplates)
   const createPatient = useMutation(api.patients.create)
@@ -296,12 +297,22 @@ export function PatientsPage() {
                     <TableHead>HMO</TableHead>
                     <TableHead>Last visit</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Profile</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredPatients.map((patient) => (
-                    <TableRow key={patient._id}>
+                    <TableRow
+                      key={patient._id}
+                      className="cursor-pointer"
+                      onClick={() => navigate(buildPatientDetailPath(patient._id))}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault()
+                          navigate(buildPatientDetailPath(patient._id))
+                        }
+                      }}
+                      tabIndex={0}
+                    >
                       <TableCell>
                         <div className="flex flex-col gap-1">
                           <span className="font-medium">{patient.fullName}</span>
@@ -316,11 +327,6 @@ export function PatientsPage() {
                         <Badge variant={patient.paymentType === "hmo" ? "default" : "secondary"}>
                           {patient.statusLabel}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button asChild variant="ghost">
-                          <Link to={buildPatientDetailPath(patient._id)}>Open</Link>
-                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
