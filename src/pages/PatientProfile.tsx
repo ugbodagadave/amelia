@@ -32,6 +32,10 @@ function DetailItem({ label, value }: { label: string; value: string }) {
   )
 }
 
+function buildBillBuilderPath(patientId: string) {
+  return `${ROUTES.BILLS_NEW}?patientId=${patientId}`
+}
+
 export function PatientProfilePage() {
   const { patientId } = useParams<{ patientId: string }>()
   const patient = useQuery(
@@ -84,9 +88,11 @@ export function PatientProfilePage() {
             <Badge variant={patient.paymentType === "hmo" ? "default" : "secondary"}>
               {patient.paymentType === "hmo" ? "HMO" : "Self-pay"}
             </Badge>
-            <Button disabled>
-              <CreditCardIcon data-icon="inline-start" />
-              New Bill
+            <Button asChild>
+              <Link to={buildBillBuilderPath(patient._id)}>
+                <CreditCardIcon data-icon="inline-start" />
+                New Bill
+              </Link>
             </Button>
           </div>
         </CardHeader>
@@ -183,9 +189,11 @@ export function PatientProfilePage() {
                     </EmptyDescription>
                   </EmptyHeader>
                   <EmptyContent>
-                    <Button disabled>
-                      <CreditCardIcon data-icon="inline-start" />
-                      New Bill
+                    <Button asChild>
+                      <Link to={buildBillBuilderPath(patient._id)}>
+                        <CreditCardIcon data-icon="inline-start" />
+                        New Bill
+                      </Link>
                     </Button>
                   </EmptyContent>
                 </Empty>

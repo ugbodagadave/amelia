@@ -3,6 +3,7 @@ import { v } from "convex/values"
 
 const statusValidator = v.union(
   v.literal("awaiting_auth"),
+  v.literal("auth_confirmed"),
   v.literal("pending_payment"),
   v.literal("paid"),
   v.literal("claimed"),

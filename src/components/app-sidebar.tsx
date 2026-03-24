@@ -62,7 +62,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     ...item,
     isActive:
       pathname === item.url ||
-      (item.url === ROUTES.PATIENTS && pathname.startsWith(`${ROUTES.PATIENTS}/`)),
+      (item.url === ROUTES.PATIENTS && pathname.startsWith(`${ROUTES.PATIENTS}/`)) ||
+      (item.url === ROUTES.BILLS && pathname.startsWith("/bills/")),
   }))
 
   const initials = user?.fullName

@@ -169,35 +169,35 @@ Fields:
 
 ---
 
-## Phase 3 — Bill Builder
+## ✅ Phase 3 — Bill Builder
 
 **Goal:** Staff can create a complete patient bill with investigations, medications, auto-totals, and the authorization code tracker.
 
-### 3.1 Bill Creation Page (`/bills/new`)
+### ✅ 3.1 Bill Creation Page (`/bills/new`)
 Two-column layout:
 - Left: patient/episode form + line items
 - Right: bill summary + auth tracker + payment panel
 
-### 3.2 Patient & Episode Section
+### ✅ 3.2 Patient & Episode Section
 - Patient selector dropdown (searches registered patients)
 - Admission type: Outpatient / Inpatient chip selector
 - Date fields: Notification, Admission, Discharge
 - Diagnosis free text field
 - Presenting complaints + duration field
 
-### 3.3 Investigations Line Items
+### ✅ 3.3 Investigations Line Items
 - Dynamic table: add/remove rows
 - Each row: service name (autocomplete from `service_catalog`), quantity, unit price, row total (auto-calculated)
 - "Add Investigation" button appends new empty row
 - Delete button removes row
 - Investigations subtotal auto-updates on any change
 
-### 3.4 Medications Line Items
+### ✅ 3.4 Medications Line Items
 - Dynamic table: add/remove rows
 - Each row: drug name (free text), dosage, duration, quantity, unit price, row total
 - Medications subtotal auto-updates
 
-### 3.5 Auto-Calculation Engine
+### ✅ 3.5 Auto-Calculation Engine
 All calculations reactive (recalculate on every input change):
 ```
 investigations_total = sum(qty × unit_price) for all investigation rows
@@ -208,7 +208,7 @@ expected_receivable = grand_total - hmo_deduction
 ```
 Display expected receivable in green with clear label: "Expected Receivable after 10% HMO deduction"
 
-### 3.6 Authorization Code Tracker
+### ✅ 3.6 Authorization Code Tracker
 State machine for HMO bills:
 - **AWAITING_AUTH**: red lock banner shown, bill cannot proceed to payment. Click banner → auth code input expands
 - **AUTH_CONFIRMED**: green confirmation banner with stored auth code + timestamp
@@ -219,17 +219,17 @@ Auth code entry:
 - "Confirm Auth Code" button: validates non-empty, stores in bill record with `authCodeReceivedAt` timestamp
 - Once confirmed: cannot be un-confirmed (edit requires explicit "Change Auth Code" action)
 
-### 3.7 Bill Save & Status
+### ✅ 3.7 Bill Save & Status
 - "Save Bill" saves draft without triggering payment
-- Bill status on creation: `awaiting_auth` (HMO) or `pending_payment` (self-pay)
+- Bill status on creation: `awaiting_auth` (HMO without code), `auth_confirmed` (HMO with confirmed code), or `pending_payment` (self-pay)
 - Bill detail page (`/bills/:billId`): view all bill data, current status, payment status
 
-### 3.8 Bill List Page (`/bills`)
+### ✅ 3.8 Bill List Page (`/bills`)
 - Table: patient name, HMO, total, status badge, auth status, date
-- Filter tabs: All / Awaiting Auth / Pending Payment / Paid / Overdue
+- Filter tabs: All / Awaiting Auth / Auth Confirmed / Pending Payment / Paid / Overdue
 - Click row → bill detail page
 
-**Tests for Phase 3:**
+**Tests for Phase 3:** ✅ 9 tests in `tests/phase3.test.ts` and full `bun test` suite passing
 - Calculation: investigations total correct with 3 rows, mixed quantities
 - Calculation: HMO deduction exactly 10%, self-pay shows no deduction row
 - Auth tracker: HMO bill blocks payment generation when auth not confirmed

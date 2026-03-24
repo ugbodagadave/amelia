@@ -6,6 +6,8 @@ import { DashboardPage } from "@/pages/Dashboard"
 import { PatientsPage } from "@/pages/Patients"
 import { PatientProfilePage } from "@/pages/PatientProfile"
 import { BillsPage } from "@/pages/Bills"
+import { BillBuilderPage } from "@/pages/BillBuilder"
+import { BillDetailPage } from "@/pages/BillDetail"
 import { ClaimsPage } from "@/pages/Claims"
 import { AnalyticsPage } from "@/pages/Analytics"
 import { SettingsPage } from "@/pages/Settings"
@@ -44,6 +46,8 @@ function App() {
         <Route path={ROUTES.PATIENTS}  element={<ProtectedLayout><PatientsPage /></ProtectedLayout>} />
         <Route path={ROUTES.PATIENT_DETAIL} element={<ProtectedLayout><PatientProfilePage /></ProtectedLayout>} />
         <Route path={ROUTES.BILLS}     element={<ProtectedLayout><BillsPage /></ProtectedLayout>} />
+        <Route path={ROUTES.BILLS_NEW} element={<ProtectedLayout><BillBuilderPage /></ProtectedLayout>} />
+        <Route path={ROUTES.BILL_DETAIL} element={<ProtectedLayout><BillDetailPage /></ProtectedLayout>} />
         <Route path={ROUTES.CLAIMS}    element={<ProtectedLayout><ClaimsPage /></ProtectedLayout>} />
         <Route path={ROUTES.ANALYTICS} element={<ProtectedLayout><AnalyticsPage /></ProtectedLayout>} />
         <Route path={ROUTES.SETTINGS}  element={<ProtectedLayout><SettingsPage /></ProtectedLayout>} />

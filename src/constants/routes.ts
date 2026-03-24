@@ -7,6 +7,7 @@ export const ROUTES = {
   PATIENT_DETAIL: "/patients/:patientId",
   BILLS: "/bills",
   BILLS_NEW: "/bills/new",
+  BILL_DETAIL: "/bills/:billId",
   CLAIMS: "/claims",
   ANALYTICS: "/analytics",
   SETTINGS: "/settings",
