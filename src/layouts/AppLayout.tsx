@@ -13,7 +13,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <SidebarInset className="h-screen overflow-hidden">
         <Topbar />
         <div className="flex flex-1 flex-col overflow-y-auto">
-          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-4">
             {children}
           </div>
         </div>

@@ -132,6 +132,7 @@ describe("Phase 1 — App routing and docs", () => {
     expect(layoutSource).toContain("h-screen")
     expect(layoutSource).toContain("overflow-hidden")
     expect(layoutSource).toContain("overflow-y-auto")
+    expect(layoutSource).toContain("pt-4")
   })
 
   test("settings uses a dialog modal for add service instead of a sheet", async () => {
