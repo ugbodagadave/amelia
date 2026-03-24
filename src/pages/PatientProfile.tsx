@@ -79,10 +79,9 @@ export function PatientProfilePage() {
       <Card>
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex flex-col gap-2">
-            <CardTitle className="font-mono text-xl">{patient.fullName}</CardTitle>
-            <CardDescription>
-              Patient record prepared for billing, authorization tracking, and claims.
-            </CardDescription>
+            <CardTitle className="font-mono text-xl" style={{ color: "var(--primary)" }}>
+              {patient.fullName}
+            </CardTitle>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={patient.paymentType === "hmo" ? "default" : "secondary"}>
@@ -112,9 +111,19 @@ export function PatientProfilePage() {
       </Card>
 
       <Tabs defaultValue="overview">
-        <TabsList variant="line">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="bills">Bills</TabsTrigger>
+        <TabsList className="gap-2 bg-transparent p-0">
+          <TabsTrigger
+            value="overview"
+            className="border border-border bg-background px-3 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Overview
+          </TabsTrigger>
+          <TabsTrigger
+            value="bills"
+            className="border border-border bg-background px-3 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Bills
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">

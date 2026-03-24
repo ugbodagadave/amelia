@@ -227,6 +227,12 @@ Auth code entry:
 ### ✅ 3.8 Bill List Page (`/bills`)
 - Table: patient name, HMO, total, status badge, auth status, date
 - Filter tabs: All / Awaiting Auth / Auth Confirmed / Pending Payment / Paid / Overdue
+
+### ✅ 3.9 Patient Record UI Cleanup
+- Sidebar trigger uses the Phosphor `SidebarSimpleIcon`
+- Patient profile title uses the Amelia primary color token
+- Patient record tabs show a boxed active state instead of plain text
+- Removed the redundant patient profile billing-prep helper copy
 - Click row → bill detail page
 
 **Tests for Phase 3:** ✅ 9 tests in `tests/phase3.test.ts` and full `bun test` suite passing

@@ -151,6 +151,21 @@ describe("Phase 3 - Routing and source integration", () => {
     expect(patientProfileSource).toContain("ROUTES.BILLS_NEW")
   })
 
+  test("patient profile and sidebar include the phase 3 UI cleanup", async () => {
+    const patientProfileSource = await Bun.file("./src/pages/PatientProfile.tsx").text()
+    const sidebarSource = await Bun.file("./src/components/ui/sidebar.tsx").text()
+
+    expect(sidebarSource).toContain("SidebarSimpleIcon")
+    expect(sidebarSource).toContain("size={32}")
+
+    expect(patientProfileSource).toContain('style={{ color: "var(--primary)" }}')
+    expect(patientProfileSource).toContain('TabsList className="gap-2 bg-transparent p-0"')
+    expect(patientProfileSource).toContain('data-[state=active]:bg-primary')
+    expect(patientProfileSource).not.toContain(
+      "Patient record prepared for billing, authorization tracking, and claims.",
+    )
+  })
+
   test("schema and plan document the explicit auth-confirmed billing flow", async () => {
     const schemaSource = await Bun.file("./convex/schema.ts").text()
     const plan = await Bun.file("./docs/plan.md").text()
