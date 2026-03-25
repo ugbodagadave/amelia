@@ -1,4 +1,5 @@
 export const APP_BOOTSTRAP_PING_EVENT = "app/bootstrap.ping"
+export const AUTH_USER_CREATED_EVENT = "auth/user.created"
 export const BILL_PAYMENT_LINK_SENT_EVENT = "bill/payment_link.sent"
 export const PAYMENT_CONFIRMED_EVENT = "payment/confirmed"
 export const CLAIMS_OVERDUE_CHECK_EVENT = "claims/overdue.check"

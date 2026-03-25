@@ -39,6 +39,13 @@ describe("Phase 0 — Clerk auth flow", () => {
     expect(src).toContain(`element={<SignInPage />}`)
     expect(src).not.toContain(`ProtectedLayout><SignInPage`)
   })
+
+  test("unknown routes render a not found page instead of redirecting to dashboard", async () => {
+    const src = await Bun.file("./src/App.tsx").text()
+    expect(src).toContain("NotFoundPage")
+    expect(src).toContain('path="*"')
+    expect(src).not.toContain('<Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />')
+  })
 })
 
 // ---------------------------------------------------------------------------

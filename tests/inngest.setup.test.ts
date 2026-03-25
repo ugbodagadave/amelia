@@ -4,6 +4,8 @@ import { INNGEST_APP_ID } from "../src/inngest/client"
 import {
   APP_BOOTSTRAP_PING_EVENT,
   APP_BOOTSTRAP_PING_FUNCTION_ID,
+  AUTH_USER_CREATED_EVENT,
+  AUTH_USER_CREATED_FUNCTION_ID,
   BILL_PAYMENT_LINK_SENT_EVENT,
   BILL_PAYMENT_LINK_SENT_FUNCTION_ID,
   CLAIMS_OVERDUE_CHECK_EVENT,
@@ -31,9 +33,11 @@ describe("Inngest setup", () => {
     expect(BILL_PAYMENT_LINK_SENT_EVENT).toBe("bill/payment_link.sent")
     expect(CLAIMS_OVERDUE_CHECK_EVENT).toBe("claims/overdue.check")
     expect(PAYMENT_CONFIRMED_EVENT).toBe("payment/confirmed")
+    expect(AUTH_USER_CREATED_EVENT).toBe("auth/user.created")
     expect(BILL_PAYMENT_LINK_SENT_FUNCTION_ID).toBe("bill-payment-link-sent")
     expect(CLAIMS_OVERDUE_CHECK_FUNCTION_ID).toBe("claims-overdue-check")
     expect(PAYMENT_CONFIRMED_FUNCTION_ID).toBe("payment-confirmed")
-    expect(inngestFunctions).toHaveLength(4)
+    expect(AUTH_USER_CREATED_FUNCTION_ID).toBe("auth-user-created")
+    expect(inngestFunctions).toHaveLength(5)
   })
 })

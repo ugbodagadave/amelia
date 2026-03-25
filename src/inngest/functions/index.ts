@@ -1,10 +1,13 @@
+import { authUserCreated } from "./authUserCreated"
 import { appBootstrapPing } from "./bootstrap"
 import { billPaymentLinkSent } from "./billPaymentLinkSent"
 import { claimsOverdueCheck } from "./claimsOverdueCheck"
 import { paymentConfirmed } from "./paymentConfirmed"
 
 export { APP_BOOTSTRAP_PING_EVENT } from "../events"
+export { AUTH_USER_CREATED_EVENT } from "../events"
 export { APP_BOOTSTRAP_PING_FUNCTION_ID } from "./bootstrap"
+export { AUTH_USER_CREATED_FUNCTION_ID } from "./authUserCreated"
 export {
   BILL_PAYMENT_LINK_SENT_EVENT,
   CLAIMS_OVERDUE_CHECK_EVENT,
@@ -15,6 +18,7 @@ export { CLAIMS_OVERDUE_CHECK_FUNCTION_ID } from "./claimsOverdueCheck"
 export { PAYMENT_CONFIRMED_FUNCTION_ID } from "./paymentConfirmed"
 
 export const inngestFunctions = [
+  authUserCreated,
   appBootstrapPing,
   billPaymentLinkSent,
   claimsOverdueCheck,

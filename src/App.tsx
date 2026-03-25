@@ -14,6 +14,7 @@ import { BillDetailPage } from "@/pages/BillDetail"
 import { ClaimsPage } from "@/pages/Claims"
 import { AnalyticsPage } from "@/pages/Analytics"
 import { SettingsPage } from "@/pages/Settings"
+import { NotFoundPage } from "@/pages/NotFound"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { AppLayout } from "@/layouts/AppLayout"
 import { ClinicGate } from "@/components/clinic/ClinicGate"
@@ -59,7 +60,7 @@ function App() {
         <Route path={ROUTES.SETTINGS}  element={<ProtectedLayout><SettingsPage /></ProtectedLayout>} />
 
         <Route path="/" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
-        <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   )

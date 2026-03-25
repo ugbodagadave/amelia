@@ -1,5 +1,6 @@
 import { httpRouter } from "convex/server"
 import { httpAction } from "./_generated/server"
+import { verifyWebhook } from "@clerk/backend/webhooks"
 import { serve } from "inngest/edge"
 import { internal } from "./_generated/api"
 import { inngest } from "./inngestClient"
@@ -15,6 +16,37 @@ const inngestHandler = serve({
 http.route({ path: "/api/inngest", method: "GET", handler: httpAction(async (_, req) => inngestHandler(req)) })
 http.route({ path: "/api/inngest", method: "POST", handler: httpAction(async (_, req) => inngestHandler(req)) })
 http.route({ path: "/api/inngest", method: "PUT", handler: httpAction(async (_, req) => inngestHandler(req)) })
+http.route({
+  path: "/api/webhooks/clerk",
+  method: "POST",
+  handler: httpAction(async (_, req) => {
+    const payload = await verifyWebhook(req, {
+      signingSecret: process.env.CLERK_WEBHOOK_SIGNING_SECRET ?? "",
+    })
+
+    if (payload.type === "user.created") {
+      const primaryEmailId = payload.data.primary_email_address_id
+      const primaryEmail = payload.data.email_addresses.find(
+        (email) => email.id === primaryEmailId,
+      )?.email_address
+
+      if (primaryEmail) {
+        await inngest.send({
+          name: "auth/user.created",
+          data: {
+            clerkUserId: payload.data.id,
+            email: primaryEmail,
+            firstName: payload.data.first_name ?? "",
+            lastName: payload.data.last_name ?? "",
+          },
+        })
+      }
+    }
+
+    return new Response("ok", { status: 200 })
+  }),
+})
+
 http.route({
   path: "/api/webhooks/interswitch",
   method: "POST",

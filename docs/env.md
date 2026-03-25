@@ -25,12 +25,12 @@ VITE_CONVEX_URL=https://your-slug.convex.cloud
 VITE_CLERK_PUBLISHABLE_KEY=pk_test_xxxxxxxxxxxxxxxxxxxx
 CLERK_SECRET_KEY=sk_test_xxxxxxxxxxxxxxxxxxxx
 
-# Clerk webhook secret (for verifying Clerk webhook events if needed)
-CLERK_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxx
+# Clerk webhook signing secret (for verifying Clerk webhook events)
+CLERK_WEBHOOK_SIGNING_SECRET=whsec_xxxxxxxxxxxxxxxxxxxx
 ```
 
 **Where to get it:** `clerk.com` → Dashboard → Your Application → API Keys.
-**Note:** `VITE_` prefix exposes to frontend bundle. Secret key is server/Convex-only — never use `VITE_CLERK_SECRET_KEY`.
+**Note:** `VITE_` prefix exposes to frontend bundle. Secret key and webhook signing secret are server/Convex-only.
 
 ---
 
@@ -183,8 +183,23 @@ FIRECRAWL_API_KEY=fc-xxxxxxxxxxxxxxxxxxxx
 ```env
 # Your deployed app URL (used for webhook registration and SMS links)
 VITE_APP_URL=http://localhost:5173                # development
-# VITE_APP_URL=https://amelia.vercel.app          # production
+# VITE_APP_URL=https://app.getamelia.online       # production
 ```
+
+---
+
+## Resend (Welcome Email)
+
+```env
+# From: resend.com
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxx
+RESEND_FROM_EMAIL=onboarding@your-domain.com
+```
+
+**Used for:** welcome emails sent immediately after Clerk `user.created`.
+**Notes:**
+- The welcome-email flow is `Clerk webhook -> Convex -> Inngest -> Resend`
+- Verify the sending domain in Resend before using a custom `from` address
 
 ---
 
@@ -196,6 +211,7 @@ VITE_APP_URL=http://localhost:5173                # development
 | `CONVEX_DEPLOYMENT` | Convex CLI | ✅ |
 | `VITE_CLERK_PUBLISHABLE_KEY` | Frontend | ✅ |
 | `CLERK_SECRET_KEY` | Convex actions | ✅ |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | Convex HTTP action | ✅ |
 | `INTERSWITCH_CLIENT_ID` | Convex actions | ✅ |
 | `INTERSWITCH_SECRET_KEY` | Convex actions | ✅ |
 | `INTERSWITCH_MERCHANT_CODE` | Convex actions | ✅ |
@@ -214,6 +230,8 @@ VITE_APP_URL=http://localhost:5173                # development
 | `META_PHONE_NUMBER_ID` | Convex actions | ✅ |
 | `META_WABA_ID` | Convex actions | ✅ |
 | `META_WEBHOOK_VERIFY_TOKEN` | Convex HTTP action | ✅ |
+| `RESEND_API_KEY` | Inngest / Convex runtime | ✅ |
+| `RESEND_FROM_EMAIL` | Inngest / Convex runtime | ✅ |
 | `E2B_API_KEY` | Convex actions | ✅ |
 | `GROQ_API_KEY` | Convex actions | ✅ |
 | `GROQ_MODEL` | Convex actions | ✅ |
@@ -253,6 +271,9 @@ npx convex env set META_SENDER_NUMBER "+2349056836313"
 npx convex env set META_WABA_ID "your_value"
 npx convex env set META_WEBHOOK_VERIFY_TOKEN "your_value"
 npx convex env set META_GRAPH_API_VERSION "v23.0"
+npx convex env set CLERK_WEBHOOK_SIGNING_SECRET "your_value"
+npx convex env set RESEND_API_KEY "your_value"
+npx convex env set RESEND_FROM_EMAIL "onboarding@your-domain.com"
 npx convex env set E2B_API_KEY "your_value"
 npx convex env set GROQ_API_KEY "your_value"
 npx convex env set GROQ_MODEL "moonshotai/kimi-k2-instruct-0905"
@@ -277,6 +298,7 @@ CONVEX_DEPLOYMENT=
 # CLERK
 VITE_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
+CLERK_WEBHOOK_SIGNING_SECRET=
 
 # INTERSWITCH — Quickteller Business (Payments) (set via `npx convex env set`)
 INTERSWITCH_CLIENT_ID=
@@ -311,6 +333,10 @@ META_SENDER_NUMBER=
 META_WABA_ID=
 META_WEBHOOK_VERIFY_TOKEN=
 META_GRAPH_API_VERSION=v23.0
+
+# RESEND (set via `npx convex env set`)
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=
 
 # E2B (set via `npx convex env set`)
 E2B_API_KEY=
