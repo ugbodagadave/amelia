@@ -18,6 +18,7 @@ export interface ClaimScoreResult {
   patientName: string
   score: number
   band: "green" | "amber" | "red"
+  summary: string
   blockingIssues: string[]
   warningIssues: string[]
   canGenerate: boolean

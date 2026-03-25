@@ -13,6 +13,163 @@ import type {
   GroqClaimEnrichment,
 } from "./claimsTypes"
 
+function summarizeIssue(issue: string) {
+  const normalized = issue.toLowerCase()
+
+  if (normalized.includes("nin")) {
+    return "NIN"
+  }
+
+  if (normalized.includes("diagnosis")) {
+    return "diagnosis"
+  }
+
+  if (normalized.includes("authorization")) {
+    return "authorization code"
+  }
+
+  if (normalized.includes("line item") || normalized.includes("investigation") || normalized.includes("medication")) {
+    return "claim line items"
+  }
+
+  if (normalized.includes("date")) {
+    return "claim dates"
+  }
+
+  return issue.replace(/\.$/, "")
+}
+
+function capitalize(input: string) {
+  return input.charAt(0).toUpperCase() + input.slice(1)
+}
+
+export function buildClaimSummaryText({
+  blockingIssues,
+  warningIssues,
+}: {
+  blockingIssues: string[]
+  warningIssues: string[]
+}) {
+  if (blockingIssues.length > 0) {
+    const labels = blockingIssues.slice(0, 2).map(summarizeIssue)
+    if (labels.length === 1) {
+      return `Missing ${labels[0]}.`
+    }
+    return `Missing ${labels[0]} and ${labels[1]}.`
+  }
+
+  if (warningIssues.length > 0) {
+    const firstWarning = warningIssues[0]?.replace(/\.$/, "") ?? "Review claim details"
+    if (warningIssues.length === 1) {
+      return `${capitalize(firstWarning)}.`
+    }
+    return `${capitalize(firstWarning)}; ${warningIssues.length - 1} advisory fixes suggested.`
+  }
+
+  return "No blocking issues detected."
+}
+
+function fallbackInsightFromIssue(issue: string) {
+  const normalized = issue.toLowerCase()
+
+  if (normalized.includes("nin")) {
+    return "Add the patient's NIN."
+  }
+
+  if (normalized.includes("diagnosis wording is vague") || normalized.includes("diagnosis")) {
+    return "Clarify the diagnosis wording."
+  }
+
+  if (normalized.includes("authorization")) {
+    return "Confirm and enter the authorization code."
+  }
+
+  if (normalized.includes("line item") || normalized.includes("investigation") || normalized.includes("medication")) {
+    return "Add the missing investigation or medication line items."
+  }
+
+  if (normalized.includes("date")) {
+    return "Correct the admission and discharge dates."
+  }
+
+  if (normalized.includes("nhis")) {
+    return "Fill in the enrollee NHIS number."
+  }
+
+  return capitalize(issue.replace(/\.$/, "")) + "."
+}
+
+export function deriveActionableInsightsFallback(issues: string[]) {
+  if (issues.length === 0) {
+    return ["No correction needed. Claim is ready to generate."]
+  }
+
+  return Array.from(new Set(issues.map(fallbackInsightFromIssue))).slice(0, 4)
+}
+
+async function enrichActionableInsightsWithGroq({
+  record,
+  issues,
+}: {
+  record: ClaimCandidateRecord
+  issues: string[]
+}) {
+  const client = createGroqClient()
+  if (!client) {
+    return null
+  }
+
+  const model = process.env.GROQ_MODEL ?? "moonshotai/kimi-k2-instruct-0905"
+  const temperature = parseNumberEnv("GROQ_TEMPERATURE", 0.3)
+  const max_completion_tokens = parseNumberEnv("GROQ_MAX_COMPLETION_TOKENS", 512)
+  const top_p = parseNumberEnv("GROQ_TOP_P", 1)
+
+  const prompt = [
+    "You are helping clinic staff correct a Nigerian HMO claim.",
+    "Return strict JSON: {\"insights\": string[]}",
+    "Write 2 to 4 short, direct correction bullets.",
+    "Use imperative phrasing.",
+    "Do not explain or add background.",
+    `Diagnosis: ${record.bill.diagnosis}`,
+    `Authorization code: ${record.bill.authorizationCode ?? ""}`,
+    `Existing issues: ${issues.join(" | ") || "None"}`,
+  ].join("\n")
+
+  try {
+    const response = await client.chat.completions.create({
+      model,
+      temperature,
+      max_completion_tokens,
+      top_p,
+      response_format: { type: "json_object" },
+      messages: [{ role: "user", content: prompt }],
+    })
+
+    const content = response.choices[0]?.message?.content
+    if (!content) {
+      return null
+    }
+
+    const parsed = JSON.parse(content) as { insights?: string[] }
+    const insights = (parsed.insights ?? [])
+      .filter((insight): insight is string => typeof insight === "string" && insight.trim().length > 0)
+      .map((insight) => capitalize(insight.trim().replace(/\.$/, "")) + ".")
+      .slice(0, 4)
+
+    return insights.length > 0 ? insights : null
+  } catch {
+    return null
+  }
+}
+
+export async function getClaimActionableInsightsForRecord(
+  record: ClaimCandidateRecord,
+  issues: string[],
+) {
+  const groqInsights = await enrichActionableInsightsWithGroq({ record, issues })
+  return groqInsights ?? deriveActionableInsightsFallback(issues)
+}
+
 function createGroqClient() {
   const apiKey = process.env.GROQ_API_KEY
 
@@ -200,6 +357,10 @@ export async function scoreClaimRecords(
       patientName: buildPatientFullName(record.patient.surname, record.patient.otherNames),
       score: scoreSummary.score,
       band: scoreSummary.band,
+      summary: buildClaimSummaryText({
+        blockingIssues: scoreSummary.blockingIssues,
+        warningIssues: scoreSummary.warningIssues,
+      }),
       blockingIssues: scoreSummary.blockingIssues,
       warningIssues: scoreSummary.warningIssues,
       canGenerate: scoreSummary.canGenerate,

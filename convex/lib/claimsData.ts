@@ -49,6 +49,7 @@ export async function loadClaimRecords(
   db: ClaimsDatabase,
   clinicId: Id<"clinics">,
   billIds: Id<"bills">[],
+  options?: { includeClaimed?: boolean },
 ): Promise<ClaimCandidateRecord[]> {
   const claimBatchBills = await db.query("claim_batch_bills").collect()
   const claimedBillIds = new Set(claimBatchBills.map((entry) => entry.billId))
@@ -56,7 +57,11 @@ export async function loadClaimRecords(
 
   for (const billId of billIds) {
     const bill = await db.get(billId)
-    if (!bill || bill.clinicId !== clinicId || claimedBillIds.has(bill._id)) {
+    if (
+      !bill ||
+      bill.clinicId !== clinicId ||
+      (!options?.includeClaimed && claimedBillIds.has(bill._id))
+    ) {
       continue
     }
 
@@ -80,6 +85,17 @@ export async function loadClaimRecords(
   }
 
   return records
+}
+
+export async function getClaimRecordForBill(
+  db: ClaimsDatabase,
+  clinicId: Id<"clinics">,
+  billId: Id<"bills">,
+) {
+  const [record] = await loadClaimRecords(db, clinicId, [billId], {
+    includeClaimed: true,
+  })
+  return record ?? null
 }
 
 export async function getTemplateForClinic(

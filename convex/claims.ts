@@ -7,6 +7,7 @@ import { BILL_STATUS } from "../src/lib/billing"
 import { CLAIM_BATCH_STATUS, CLAIM_SCORE_BAND, addDays } from "../src/lib/claims"
 import { buildPatientFullName } from "../src/lib/patients"
 import {
+  getClaimRecordForBill as loadSingleClaimRecord,
   getCurrentClinicForAction,
   getCurrentClinicId,
   getTemplateForClinic,
@@ -20,7 +21,10 @@ import {
   mergeClaimArtifacts,
   toBlobPart,
 } from "./lib/claimsPdf"
-import { scoreClaimRecords } from "./lib/claimsScoring"
+import {
+  getClaimActionableInsightsForRecord,
+  scoreClaimRecords,
+} from "./lib/claimsScoring"
 import type { ClaimCandidateRecord, ClaimScoreResult } from "./lib/claimsTypes"
 
 async function resolveBatchArtifacts(
@@ -69,6 +73,16 @@ export const getTemplateById = internalQuery({
   },
   handler: async (ctx, args) => {
     return await getTemplateForClinic(ctx.db, args.clinicId, args.templateId)
+  },
+})
+
+export const getClaimRecordForBill = internalQuery({
+  args: {
+    clinicId: v.id("clinics"),
+    billId: v.id("bills"),
+  },
+  handler: async (ctx, args) => {
+    return await loadSingleClaimRecord(ctx.db, args.clinicId, args.billId)
   },
 })
 
@@ -234,6 +248,43 @@ export const scoreClaimCompleteness = action({
     )
 
     return await scoreClaimRecords(records)
+  },
+})
+
+export const getClaimActionableInsights = action({
+  args: { billId: v.id("bills") },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    billId: Id<"bills">
+    patientName: string
+    insights: string[]
+  }> => {
+    const clinic = await getCurrentClinicForAction(ctx)
+    const record: ClaimCandidateRecord | null = await ctx.runQuery(
+      internal.claims.getClaimRecordForBill,
+      {
+        clinicId: clinic._id,
+        billId: args.billId,
+      },
+    )
+
+    if (!record) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Claim record not found for this clinic.",
+      })
+    }
+
+    const [score] = await scoreClaimRecords([record])
+    const issues = [...(score?.blockingIssues ?? []), ...(score?.warningIssues ?? [])]
+
+    return {
+      billId: args.billId,
+      patientName: score?.patientName ?? buildPatientFullName(record.patient.surname, record.patient.otherNames),
+      insights: await getClaimActionableInsightsForRecord(record, issues),
+    }
   },
 })
 

@@ -2,9 +2,13 @@ import { useEffect, useMemo, useState } from "react"
 import { useAction, useMutation, useQuery } from "convex/react"
 import {
   CalendarBlankIcon,
+  CaretDownIcon,
+  CaretUpIcon,
   CheckCircleIcon,
   ClipboardTextIcon,
+  EyeIcon,
   DownloadSimpleIcon,
+  SparkleIcon,
   WarningIcon,
 } from "@phosphor-icons/react"
 import { format } from "date-fns"
@@ -15,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import {
   Field,
@@ -105,6 +110,7 @@ export function ClaimsPage() {
   const generateClaimBatch = useAction(api.claims.generateClaimBatch)
   const submitClaimBatch = useMutation(api.claims.submitClaimBatch)
   const markClaimBatchPaid = useMutation(api.claims.markClaimBatchPaid)
+  const getClaimActionableInsights = useAction(api.claims.getClaimActionableInsights)
 
   const [selectedBillIds, setSelectedBillIds] = useState<Id<"bills">[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState("")
@@ -120,11 +126,18 @@ export function ClaimsPage() {
       patientName: string
       score: number
       band: ClaimScoreBand
+      summary: string
       blockingIssues: string[]
       warningIssues: string[]
       canGenerate: boolean
     }>
   >([])
+  const [showAllScoreResults, setShowAllScoreResults] = useState(false)
+  const [expandedInsightBillIds, setExpandedInsightBillIds] = useState<string[]>([])
+  const [actionableInsightMap, setActionableInsightMap] = useState<
+    Record<string, { patientName: string; insights: string[] }>
+  >({})
+  const [loadingInsightBillIds, setLoadingInsightBillIds] = useState<string[]>([])
   const [isScoring, setIsScoring] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationStep, setGenerationStep] = useState(0)
@@ -188,6 +201,19 @@ export function ClaimsPage() {
     }),
     { count: 0, totalAmount: 0, expectedReceivable: 0 },
   )
+  const claimsWithIssuesCount = scoreResults.filter(
+    (result) => result.blockingIssues.length > 0 || result.warningIssues.length > 0,
+  ).length
+  const readyClaimsCount = scoreResults.filter((result) => result.canGenerate).length
+  const visibleScoreResults = useMemo(() => {
+    if (showAllScoreResults) {
+      return scoreResults
+    }
+
+    return scoreResults.filter(
+      (result) => result.blockingIssues.length > 0 || result.warningIssues.length > 0,
+    )
+  }, [scoreResults, showAllScoreResults])
 
   function toggleBillSelection(billId: Id<"bills">, checked: boolean) {
     setSelectedBillIds((current) => {
@@ -223,10 +249,40 @@ export function ClaimsPage() {
     try {
       const results = await scoreClaimCompleteness({ billIds: selectedBillIds as never[] })
       setScoreResults(results as typeof scoreResults)
+      setShowAllScoreResults(false)
+      setExpandedInsightBillIds([])
+      setActionableInsightMap({})
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to score claims.")
     } finally {
       setIsScoring(false)
+    }
+  }
+
+  async function handleToggleInsights(result: (typeof scoreResults)[number]) {
+    const isExpanded = expandedInsightBillIds.includes(result.billId)
+    if (isExpanded) {
+      setExpandedInsightBillIds((current) => current.filter((billId) => billId !== result.billId))
+      return
+    }
+
+    setExpandedInsightBillIds((current) => [...current, result.billId])
+    if (actionableInsightMap[result.billId]) {
+      return
+    }
+
+    setLoadingInsightBillIds((current) => [...current, result.billId])
+    try {
+      const response = await getClaimActionableInsights({ billId: result.billId as never })
+      setActionableInsightMap((current) => ({
+        ...current,
+        [result.billId]: response as { patientName: string; insights: string[] },
+      }))
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to load actionable insights.")
+      setExpandedInsightBillIds((current) => current.filter((billId) => billId !== result.billId))
+    } finally {
+      setLoadingInsightBillIds((current) => current.filter((billId) => billId !== result.billId))
     }
   }
 
@@ -646,24 +702,99 @@ export function ClaimsPage() {
 
             {scoreResults.length > 0 ? (
               <div className="grid gap-3">
-                {scoreResults.map((result) => (
-                  <div key={result.billId} className="grid gap-2 border p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-medium">{result.patientName}</p>
-                      <p className={`font-mono text-sm ${scoreTone(result.band)}`}>{result.score}/100</p>
-                    </div>
-                    {result.blockingIssues.map((issue) => (
-                      <p key={issue} className="text-sm text-red-700">
-                        {issue}
-                      </p>
-                    ))}
-                    {result.warningIssues.map((issue) => (
-                      <p key={issue} className="text-sm text-amber-700">
-                        {issue}
-                      </p>
-                    ))}
+                <div className="flex flex-wrap items-center justify-between gap-3 border p-4">
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                    <span>Scored: {scoreResults.length}</span>
+                    <span>Needs attention: {claimsWithIssuesCount}</span>
+                    <span>Ready: {readyClaimsCount}</span>
                   </div>
-                ))}
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={() => setShowAllScoreResults((current) => !current)}
+                  >
+                    <EyeIcon data-icon="inline-start" />
+                    {showAllScoreResults ? "Hide clean claims" : "View all"}
+                  </Button>
+                </div>
+
+                {visibleScoreResults.length === 0 ? (
+                  <p className="border p-4 text-sm text-muted-foreground">
+                    No issues found in the current score run. Use View all to inspect every claim.
+                  </p>
+                ) : null}
+
+                {visibleScoreResults.map((result) => {
+                  const issueTone =
+                    result.blockingIssues.length > 0
+                      ? "text-red-700"
+                      : result.warningIssues.length > 0
+                        ? "text-amber-700"
+                        : "text-muted-foreground"
+                  const issueCount = result.blockingIssues.length + result.warningIssues.length
+                  const isExpanded = expandedInsightBillIds.includes(result.billId)
+                  const isLoadingInsights = loadingInsightBillIds.includes(result.billId)
+                  const actionableInsights = actionableInsightMap[result.billId]?.insights ?? []
+
+                  return (
+                    <Collapsible key={result.billId} open={isExpanded}>
+                      <div className="grid gap-3 border p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-medium">{result.patientName}</p>
+                            <p className={`line-clamp-2 text-sm ${issueTone}`}>{result.summary}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className={`font-mono text-sm ${scoreTone(result.band)}`}>{result.score}/100</p>
+                            <p className="text-xs text-muted-foreground">
+                              {issueCount > 0 ? `${issueCount} issue${issueCount === 1 ? "" : "s"}` : "Ready"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <CollapsibleTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => void handleToggleInsights(result)}
+                            >
+                              <SparkleIcon data-icon="inline-start" />
+                              Actionable insights
+                              {isExpanded ? (
+                                <CaretUpIcon data-icon="inline-end" />
+                              ) : (
+                                <CaretDownIcon data-icon="inline-end" />
+                              )}
+                            </Button>
+                          </CollapsibleTrigger>
+                          {result.blockingIssues.length > 0 ? (
+                            <span className="text-xs text-red-700">Blocking issues present</span>
+                          ) : result.warningIssues.length > 0 ? (
+                            <span className="text-xs text-amber-700">Warnings only</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No issues detected</span>
+                          )}
+                        </div>
+
+                        <CollapsibleContent className="grid gap-2 border-t pt-3">
+                          {isLoadingInsights ? (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Spinner />
+                              <span>Loading short corrective actions...</span>
+                            </div>
+                          ) : (
+                            actionableInsights.map((insight) => (
+                              <p key={insight} className="text-sm text-foreground">
+                                {insight}
+                              </p>
+                            ))
+                          )}
+                        </CollapsibleContent>
+                      </div>
+                    </Collapsible>
+                  )
+                })}
               </div>
             ) : null}
           </CardContent>

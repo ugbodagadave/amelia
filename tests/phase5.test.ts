@@ -13,10 +13,57 @@ import {
 } from "../src/lib/claims"
 import { ROUTES } from "../src/constants/routes"
 import { formatClaimCurrencyForPdf } from "../convex/lib/claimsPdf"
+import {
+  buildClaimSummaryText,
+  deriveActionableInsightsFallback,
+} from "../convex/lib/claimsScoring"
 
 describe("Phase 5 - Claim helpers", () => {
   test("formats PDF currency values without the naira symbol", () => {
     expect(formatClaimCurrencyForPdf(4500)).toBe("NGN 4,500")
+  })
+
+  test("builds a compact blocker summary", () => {
+    expect(
+      buildClaimSummaryText({
+        blockingIssues: [
+          "NIN is required for HMO claims.",
+          "Diagnosis is required before claim generation.",
+        ],
+        warningIssues: [],
+      }),
+    ).toBe("Missing NIN and diagnosis.")
+  })
+
+  test("builds a compact warning summary", () => {
+    expect(
+      buildClaimSummaryText({
+        blockingIssues: [],
+        warningIssues: [
+          "Diagnosis wording is vague.",
+          "Add a specific ICD-10 code.",
+          "One-day admission flagged for review.",
+        ],
+      }),
+    ).toBe("Diagnosis wording is vague; 2 advisory fixes suggested.")
+  })
+
+  test("builds clean claim summary when no issues exist", () => {
+    expect(
+      buildClaimSummaryText({
+        blockingIssues: [],
+        warningIssues: [],
+      }),
+    ).toBe("No blocking issues detected.")
+  })
+
+  test("derives short fallback actionable insights from issue text", () => {
+    expect(
+      deriveActionableInsightsFallback([
+        "NIN is required for HMO claims.",
+        "Diagnosis wording is vague.",
+      ]),
+    ).toEqual(["Add the patient's NIN.", "Clarify the diagnosis wording."])
   })
 
   test("classifies claim score bands by threshold", () => {
@@ -150,6 +197,11 @@ describe("Phase 5 - Routing and source integration", () => {
     expect(claimsPageSource).toContain("Generate claim batch")
     expect(claimsPageSource).toContain("Claim readiness")
     expect(claimsPageSource).toContain("Select all available")
+    expect(claimsPageSource).toContain("View all")
+    expect(claimsPageSource).toContain("Actionable insights")
+    expect(claimsPageSource).toContain("line-clamp-2")
+    expect(claimsPageSource).toContain("visibleScoreResults")
+    expect(claimsPageSource).toContain("showAllScoreResults")
     expect(claimsPageSource).toContain("toggleAllSelection")
     expect(claimsPageSource).toContain("allSelectableSelected")
     expect(claimsPageSource).toContain("CLAIM_CANDIDATES_PER_PAGE")
@@ -163,6 +215,8 @@ describe("Phase 5 - Routing and source integration", () => {
     expect(claimsLibSource).toContain("CLAIM_WORKFLOW_STEP")
     expect(claimsConvexSource).toContain("listClaimCandidates")
     expect(claimsConvexSource).toContain("scoreClaimCompleteness")
+    expect(claimsConvexSource).toContain("getClaimActionableInsights")
+    expect(claimsConvexSource).toContain("getClaimRecordForBill")
     expect(claimsConvexSource).toContain("generateClaimBatch")
     expect(claimsConvexSource).toContain("submitClaimBatch")
     expect(claimsConvexSource).toContain("markClaimBatchPaid")
@@ -171,11 +225,14 @@ describe("Phase 5 - Routing and source integration", () => {
     expect(claimsConvexSource).toContain("from \"./lib/claimsData\"")
     expect(claimsScoringSource).toContain("GROQ_MODEL")
     expect(claimsScoringSource).toContain("scoreClaimRecords")
+    expect(claimsScoringSource).toContain("buildClaimSummaryText")
+    expect(claimsScoringSource).toContain("deriveActionableInsightsFallback")
     expect(claimsPdfSource).toContain("E2B_API_KEY")
     expect(claimsPdfSource).toContain("drawPoliceHmoClaimForm")
     expect(claimsPdfSource).toContain("resolveTemplateVariant")
     expect(claimsPdfSource).toContain("renderClaimPdfByVariant")
     expect(claimsDataSource).toContain("loadClaimRecords")
+    expect(claimsDataSource).toContain("includeClaimed")
     expect(schemaSource).toContain("claimPdfStorageId")
     expect(schemaSource).toContain("mergedPdfStorageId")
     expect(schemaSource).toContain("zipBundleStorageId")
