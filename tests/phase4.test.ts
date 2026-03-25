@@ -3,12 +3,18 @@ import { ROUTES } from "../src/constants/routes"
 import {
   BILL_PAYMENT_CHANNEL,
   PAYMENT_CALLBACK_STATUS,
+  PAYMENT_REQUEST_CHANNEL,
+  PAYMENT_REQUEST_STATUS,
   buildPublicPaymentPath,
   buildTxnRef,
   buildWebCheckoutHash,
   formatAmountInKobo,
   isSuccessfulPaymentResponseCode,
+  normalizePhoneForWhatsApp,
   normalizePhoneForSms,
+  parseMetaMessageStatus,
+  shouldAutoResendPaymentRequest,
+  buildWhatsAppTemplatePayload,
   validateBankVerificationInput,
   validatePaymentLinkToken,
 } from "../src/lib/payments"
@@ -45,6 +51,11 @@ describe("Phase 4 - Payment helpers", () => {
   test("normalizes clinic phone numbers for africa's talking", () => {
     expect(normalizePhoneForSms("08012345678")).toBe("+2348012345678")
     expect(normalizePhoneForSms("+2348012345678")).toBe("+2348012345678")
+  })
+
+  test("normalizes patient phone numbers for whatsapp cloud api", () => {
+    expect(normalizePhoneForWhatsApp("08012345678")).toBe("2348012345678")
+    expect(normalizePhoneForWhatsApp("+2348012345678")).toBe("2348012345678")
   })
 
   test("validates tokenized patient payment links", () => {
@@ -101,6 +112,95 @@ describe("Phase 4 - Routing and source integration", () => {
     expect(BILL_PAYMENT_CHANNEL.CARD).toBe("card")
     expect(BILL_PAYMENT_CHANNEL.OPAY).toBe("opay")
     expect(PAYMENT_CALLBACK_STATUS.SUCCESS).toBe("success")
+    expect(PAYMENT_REQUEST_CHANNEL.WHATSAPP).toBe("whatsapp")
+    expect(PAYMENT_REQUEST_STATUS.UNSENT).toBe("unsent")
+    expect(PAYMENT_REQUEST_STATUS.DELIVERED).toBe("delivered")
+  })
+
+  test("builds the approved whatsapp utility template payload", () => {
+    expect(
+      buildWhatsAppTemplatePayload({
+        to: "2349067748876",
+        templateName: "bill_payment_request",
+        languageCode: "en",
+        patientFirstName: "Emeka",
+        clinicName: "Fruitex Clinic",
+        formattedAmount: "NGN 12,000",
+        reference: "AM1774381681527",
+        paymentUrl: "https://app.getamelia.online/pay/pay_tok_example123456",
+      }),
+    ).toEqual({
+      messaging_product: "whatsapp",
+      to: "2349067748876",
+      type: "template",
+      template: {
+        name: "bill_payment_request",
+        language: { code: "en" },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: "Emeka" },
+              { type: "text", text: "Fruitex Clinic" },
+              { type: "text", text: "NGN 12,000" },
+              { type: "text", text: "AM1774381681527" },
+            ],
+          },
+          {
+            type: "button",
+            sub_type: "url",
+            index: "0",
+            parameters: [{ type: "text", text: "pay/pay_tok_example123456" }],
+          },
+        ],
+      },
+    })
+  })
+
+  test("maps meta message statuses into amelia payment request state", () => {
+    expect(parseMetaMessageStatus("sent")).toBe(PAYMENT_REQUEST_STATUS.SENT)
+    expect(parseMetaMessageStatus("delivered")).toBe(PAYMENT_REQUEST_STATUS.DELIVERED)
+    expect(parseMetaMessageStatus("read")).toBe(PAYMENT_REQUEST_STATUS.READ)
+    expect(parseMetaMessageStatus("failed")).toBe(PAYMENT_REQUEST_STATUS.FAILED)
+    expect(parseMetaMessageStatus("unknown_status")).toBe(null)
+  })
+
+  test("allows only one automatic resend for eligible unpaid payment requests", () => {
+    expect(
+      shouldAutoResendPaymentRequest({
+        billStatus: "pending_payment",
+        paymentRequestStatus: "sent",
+        paymentRequestAttemptCount: 1,
+        autoResendAt: Date.now() - 1_000,
+      }),
+    ).toBe(true)
+
+    expect(
+      shouldAutoResendPaymentRequest({
+        billStatus: "paid",
+        paymentRequestStatus: "sent",
+        paymentRequestAttemptCount: 1,
+        autoResendAt: Date.now() - 1_000,
+      }),
+    ).toBe(false)
+
+    expect(
+      shouldAutoResendPaymentRequest({
+        billStatus: "pending_payment",
+        paymentRequestStatus: "failed",
+        paymentRequestAttemptCount: 1,
+        autoResendAt: Date.now() - 1_000,
+      }),
+    ).toBe(false)
+
+    expect(
+      shouldAutoResendPaymentRequest({
+        billStatus: "pending_payment",
+        paymentRequestStatus: "sent",
+        paymentRequestAttemptCount: 2,
+        autoResendAt: Date.now() - 1_000,
+      }),
+    ).toBe(false)
   })
 
   test("wires payment pages, convex payment actions, onboarding bank verification, and webhook handling", async () => {
@@ -125,7 +225,11 @@ describe("Phase 4 - Routing and source integration", () => {
     expect(appSource).toContain("PaymentCallbackOpayPage")
     expect(billDetailSource).toContain("api.payments.initiateCardPayment")
     expect(billDetailSource).toContain("api.payments.initiateOPayPayment")
+    expect(billDetailSource).toContain("api.payments.sendPaymentRequestViaWhatsApp")
     expect(billDetailSource).toContain('window.addEventListener("focus"')
+    expect(paymentCardSource).toContain("Send payment request")
+    expect(paymentCardSource).toContain("Resend payment request")
+    expect(paymentCardSource).toContain("Assisted payment")
     expect(paymentCardSource).toContain("Pay with Card")
     expect(paymentCardSource).toContain("Pay with OPay")
     expect(paymentCardSource).toContain("Confirm OPay payment")
@@ -141,6 +245,10 @@ describe("Phase 4 - Routing and source integration", () => {
     expect(clinicsSource).toContain("accountName")
     expect(paymentsSource).toContain("verifyNIN")
     expect(paymentsSource).toContain("getPublicPaymentByToken")
+    expect(paymentsSource).toContain("sendPaymentRequestViaWhatsApp")
+    expect(paymentsSource).toContain("META_WEBHOOK_VERIFY_TOKEN")
+    expect(paymentsSource).toContain("buildWhatsAppTemplatePayload")
+    expect(paymentsSource).toContain("shouldAutoResendPaymentRequest")
     expect(paymentsSource).toContain("finalizeCardPaymentCallbackInternal")
     expect(paymentsSource).toContain("const hasProviderReference = Boolean(args.payRef?.trim())")
     expect(paymentsSource).toContain("responseCodeMissingButPaid")
@@ -152,6 +260,8 @@ describe("Phase 4 - Routing and source integration", () => {
     expect(paymentsSource).not.toContain('[Interswitch webhook] Signature mismatch')
     expect(httpSource).toContain("/api/webhooks/interswitch")
     expect(httpSource).toContain("/api/payments/interswitch/card-callback")
+    expect(httpSource).toContain("/api/webhooks/meta")
+    expect(httpSource).toContain("hub.verify_token")
     expect(inngestEventsSource).toContain("bill/payment_link.sent")
     expect(inngestEventsSource).toContain("payment/confirmed")
     expect(inngestFunctionsSource).toContain("billPaymentLinkSent")
@@ -164,9 +274,17 @@ describe("Phase 4 - Routing and source integration", () => {
 
     expect(schemaSource).toContain("paymentLinkToken")
     expect(schemaSource).toContain("paymentChannel")
+    expect(schemaSource).toContain("paymentRequestChannel")
+    expect(schemaSource).toContain("paymentRequestStatus")
+    expect(schemaSource).toContain("paymentRequestAttemptCount")
     expect(schemaSource).toContain('index("by_payment_link_token"')
     expect(envSource).toContain("INTERSWITCH_WEBHOOK_SECRET")
+    expect(envSource).toContain("META_ACCESS_TOKEN")
+    expect(envSource).toContain("META_PHONE_NUMBER_ID")
+    expect(envSource).toContain("META_WABA_ID")
+    expect(envSource).toContain("META_WEBHOOK_VERIFY_TOKEN")
     expect(planSource).toContain("Phase 4")
     expect(planSource).toContain("patient-facing payment route")
+    expect(planSource).toContain("WhatsApp-first")
   })
 })

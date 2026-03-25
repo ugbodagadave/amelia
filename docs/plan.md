@@ -250,6 +250,8 @@ Auth code entry:
 
 **Goal:** Collect payments via Interswitch Web Checkout and OPay wallet, verify identity via Marketplace APIs, and reconcile bill status in real time.
 
+**Current collection direction:** WhatsApp-first. Saved bills should default to `Send payment request`, opening the Amelia public payment page on `app.getamelia.online`, while direct card and OPay actions remain assisted-payment fallbacks for clinic staff.
+
 ### ✅ 4.1 Payment Foundation
 - Separate Quickteller Business payment flow from Marketplace identity verification flow
 - Added shared payment helpers for amount conversion, compliant `txnref` generation, hash signing, tokenized payment links, and callback parsing
@@ -285,8 +287,9 @@ Auth code entry:
 
 ### ✅ 4.6 Payment UI
 - Bill detail payment panel now supports:
-  - `Pay with Card`
-  - `Pay with OPay`
+  - `Send payment request` / `Resend payment request`
+  - `Pay with Card` (assisted payment)
+  - `Pay with OPay` (assisted payment)
   - `Copy payment link`
   - visible transaction reference
   - disabled HMO payment state until auth is confirmed
@@ -393,6 +396,21 @@ Before generating the batch, run AI validation:
 - Return: per-bill score (0–100) + array of issues
 - Display in UI before generation: green (80+), amber (50–79), red (<50)
 - Red issues block generation; amber issues show warning but allow proceed
+- Score report UX:
+  - default view shows only claims with blockers or warnings
+  - clean claims are hidden until `View all` is clicked
+  - each visible claim shows a compact one-line summary, clamped to 2 lines max
+  - `Actionable insights` loads short corrective guidance on demand per claim and caches it for the current scoring run
+
+**Not in scope yet for Phase 5:**
+- A `Fix issues` action that lets the model directly update claim data or draft suggested corrections into the bill/patient record is intentionally not being built in the current phase.
+- The current implementation stops at scoring plus short corrective guidance; staff still make the actual corrections manually before rescoring or generating the batch.
+
+**Future agentic follow-on options:**
+- `Fix issues` per claim: model proposes and applies safe draft corrections to diagnosis wording, missing structured fields, or claim metadata, with explicit user confirmation before save.
+- Batch-level repair run: model reviews all failed claims in a batch, applies non-destructive draft fixes, and returns a before/after readiness summary.
+- Explain-and-fix workflow: each issue can show the exact field to edit, the proposed corrected value, and the reason for the change.
+- Approval queue: all AI-proposed corrections appear in a review panel where staff can accept, reject, or edit each change before persisting.
 
 **Implementation note:** Phase 5 is now in progress in the codebase with Groq-backed scoring, Convex claim batch actions, the `/claims` workspace, merged PDF + ZIP artifact generation, tracker actions, and a refactored claims backend split across focused Convex helper modules for scoring, PDF generation, and data loading. Real HMO PDF template assets are still expected to be supplied and wired into the field-map layer for final production-quality form layouts.
 

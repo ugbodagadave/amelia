@@ -114,6 +114,29 @@ AT_API_KEY=your_at_api_key
 
 ---
 
+## Meta WhatsApp Cloud API
+
+```env
+# From: Meta for Developers / WhatsApp Manager
+META_ACCESS_TOKEN=your_meta_system_user_or_permanent_access_token
+META_APP_ID=your_meta_app_id
+META_APP_SECRET=your_meta_app_secret
+META_PHONE_NUMBER_ID=your_whatsapp_phone_number_id
+META_SENDER_NUMBER=+2349056836313
+META_WABA_ID=your_whatsapp_business_account_id
+META_WEBHOOK_VERIFY_TOKEN=your_custom_webhook_verify_token
+META_GRAPH_API_VERSION=v23.0
+```
+
+**Used for:** outbound payment-request template sends and WhatsApp webhook status updates.
+**Notes:**
+- Amelia sends the approved utility template `bill_payment_request`
+- The public payment link host for this phase should be `https://app.getamelia.online`
+- Convex webhook route: `/api/webhooks/meta`
+- Convex actions cannot rely on `.env.local`; set these in Convex before testing sends
+
+---
+
 ## E2B (Sandboxed Code Execution)
 
 ```env
@@ -187,6 +210,10 @@ VITE_APP_URL=http://localhost:5173                # development
 | `INNGEST_SIGNING_KEY` | Convex HTTP action | ✅ |
 | `AT_USERNAME` | Convex actions | ✅ |
 | `AT_API_KEY` | Convex actions | ✅ |
+| `META_ACCESS_TOKEN` | Convex actions | ✅ |
+| `META_PHONE_NUMBER_ID` | Convex actions | ✅ |
+| `META_WABA_ID` | Convex actions | ✅ |
+| `META_WEBHOOK_VERIFY_TOKEN` | Convex HTTP action | ✅ |
 | `E2B_API_KEY` | Convex actions | ✅ |
 | `GROQ_API_KEY` | Convex actions | ✅ |
 | `GROQ_MODEL` | Convex actions | ✅ |
@@ -218,6 +245,14 @@ npx convex env set INNGEST_EVENT_KEY "your_value"
 npx convex env set INNGEST_SIGNING_KEY "your_value"
 npx convex env set AT_USERNAME "sandbox"
 npx convex env set AT_API_KEY "your_value"
+npx convex env set META_ACCESS_TOKEN "your_value"
+npx convex env set META_APP_ID "your_value"
+npx convex env set META_APP_SECRET "your_value"
+npx convex env set META_PHONE_NUMBER_ID "your_value"
+npx convex env set META_SENDER_NUMBER "+2349056836313"
+npx convex env set META_WABA_ID "your_value"
+npx convex env set META_WEBHOOK_VERIFY_TOKEN "your_value"
+npx convex env set META_GRAPH_API_VERSION "v23.0"
 npx convex env set E2B_API_KEY "your_value"
 npx convex env set GROQ_API_KEY "your_value"
 npx convex env set GROQ_MODEL "moonshotai/kimi-k2-instruct-0905"
@@ -266,6 +301,16 @@ INNGEST_SIGNING_KEY=
 # AFRICA'S TALKING (set via `npx convex env set`)
 AT_USERNAME=sandbox
 AT_API_KEY=
+
+# META WHATSAPP (set via `npx convex env set`)
+META_ACCESS_TOKEN=
+META_APP_ID=
+META_APP_SECRET=
+META_PHONE_NUMBER_ID=
+META_SENDER_NUMBER=
+META_WABA_ID=
+META_WEBHOOK_VERIFY_TOKEN=
+META_GRAPH_API_VERSION=v23.0
 
 # E2B (set via `npx convex env set`)
 E2B_API_KEY=

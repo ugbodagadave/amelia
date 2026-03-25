@@ -24,6 +24,15 @@ const claimScoreBandValidator = v.union(
 )
 
 const paymentChannelValidator = v.union(v.literal("card"), v.literal("opay"))
+const paymentRequestChannelValidator = v.union(v.literal("whatsapp"), v.literal("sms"))
+const paymentRequestStatusValidator = v.union(
+  v.literal("unsent"),
+  v.literal("queued"),
+  v.literal("sent"),
+  v.literal("delivered"),
+  v.literal("read"),
+  v.literal("failed"),
+)
 
 export default defineSchema({
   clinics: defineTable({
@@ -109,6 +118,17 @@ export default defineSchema({
     paymentLink: v.optional(v.string()),
     paymentLinkToken: v.optional(v.string()),
     paymentLinkTokenIssuedAt: v.optional(v.number()),
+    paymentRequestChannel: v.optional(paymentRequestChannelValidator),
+    paymentRequestStatus: v.optional(paymentRequestStatusValidator),
+    paymentRequestSentAt: v.optional(v.number()),
+    paymentRequestDeliveredAt: v.optional(v.number()),
+    paymentRequestReadAt: v.optional(v.number()),
+    paymentRequestMessageId: v.optional(v.string()),
+    paymentRequestFailedReason: v.optional(v.string()),
+    paymentRequestLastAttemptAt: v.optional(v.number()),
+    paymentRequestAttemptCount: v.optional(v.number()),
+    paymentRequestAutoResendAt: v.optional(v.number()),
+    paymentRequestLastResentAt: v.optional(v.number()),
     qrCode: v.optional(v.string()),
     paymentInitiatedAt: v.optional(v.number()),
     providerPaymentReference: v.optional(v.string()),

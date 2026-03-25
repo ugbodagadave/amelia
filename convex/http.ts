@@ -35,6 +35,33 @@ http.route({
   }),
 })
 
+http.route({
+  path: "/api/webhooks/meta",
+  method: "GET",
+  handler: httpAction(async (_, req) => {
+    const url = new URL(req.url)
+    const mode = url.searchParams.get("hub.mode")
+    const token = url.searchParams.get("hub.verify_token")
+    const challenge = url.searchParams.get("hub.challenge")
+
+    if (mode !== "subscribe" || token !== process.env.META_WEBHOOK_VERIFY_TOKEN) {
+      return new Response("Forbidden", { status: 403 })
+    }
+
+    return new Response(challenge ?? "", { status: 200 })
+  }),
+})
+
+http.route({
+  path: "/api/webhooks/meta",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    const body = await req.text()
+    await ctx.runAction(internal.payments.processMetaWebhookPayload, { body })
+    return new Response("ok", { status: 200 })
+  }),
+})
+
 async function readCardCallbackParams(req: Request) {
   if (req.method === "GET") {
     return new URL(req.url).searchParams

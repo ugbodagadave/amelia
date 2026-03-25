@@ -8,6 +8,7 @@ import {
   formatBillStatusLabel,
   validateBillInput,
 } from "../src/lib/billing"
+import { PAYMENT_REQUEST_STATUS } from "../src/lib/payments"
 import { buildPatientFullName, maskNin } from "../src/lib/patients"
 import { requireClerkUserId } from "./lib/auth"
 
@@ -297,6 +298,8 @@ export const create = mutation({
       authorizationCode,
       authCodeReceivedAt: authorizationCode ? createdAt : undefined,
       status,
+      paymentRequestStatus: PAYMENT_REQUEST_STATUS.UNSENT,
+      paymentRequestAttemptCount: 0,
       createdAt,
     })
 

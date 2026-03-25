@@ -1,9 +1,17 @@
-import { CopyIcon, CreditCardIcon, LockSimpleIcon, WalletIcon } from "@phosphor-icons/react"
+import {
+  ChatCircleTextIcon,
+  CopyIcon,
+  CreditCardIcon,
+  LockSimpleIcon,
+  WalletIcon,
+} from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 import { BILL_STATUS, type BillStatus } from "@/lib/billing"
+import { PAYMENT_REQUEST_STATUS, type PaymentRequestStatus } from "@/lib/payments"
 
 interface PaymentReadinessCardProps {
   status: BillStatus
@@ -11,9 +19,17 @@ interface PaymentReadinessCardProps {
   paymentType: "self_pay" | "hmo"
   paymentLink?: string | null
   transactionReference?: string | null
+  paymentRequestStatus?: PaymentRequestStatus | null
+  paymentRequestSentAt?: number | null
+  paymentRequestDeliveredAt?: number | null
+  paymentRequestReadAt?: number | null
+  paymentRequestFailedReason?: string | null
+  paymentRequestAutoResendAt?: number | null
+  isWhatsAppPending?: boolean
   isCardPending?: boolean
   isOpayPending?: boolean
   isConfirmingOpay?: boolean
+  onSendPaymentRequest?: () => void
   onPayWithCard: () => void
   onPayWithOPay: () => void
   onConfirmOPay?: () => void
@@ -25,9 +41,17 @@ export function PaymentReadinessCard({
   paymentType,
   paymentLink,
   transactionReference,
+  paymentRequestStatus,
+  paymentRequestSentAt,
+  paymentRequestDeliveredAt,
+  paymentRequestReadAt,
+  paymentRequestFailedReason,
+  paymentRequestAutoResendAt,
+  isWhatsAppPending = false,
   isCardPending = false,
   isOpayPending = false,
   isConfirmingOpay = false,
+  onSendPaymentRequest,
   onPayWithCard,
   onPayWithOPay,
   onConfirmOPay,
@@ -44,13 +68,25 @@ export function PaymentReadinessCard({
     toast.success("Payment link copied.")
   }
 
+  const hasBeenSent =
+    paymentRequestStatus !== undefined &&
+    paymentRequestStatus !== null &&
+    paymentRequestStatus !== PAYMENT_REQUEST_STATUS.UNSENT
+
+  const sendLabel = hasBeenSent ? "Resend payment request" : "Send payment request"
+
+  const requestStatusLabel =
+    paymentRequestStatus && paymentRequestStatus !== PAYMENT_REQUEST_STATUS.UNSENT
+      ? paymentRequestStatus.replace(/_/g, " ")
+      : "unsent"
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="font-mono text-base">Payment panel</CardTitle>
         <CardDescription>
-          Generate a patient-facing payment link, redirect into Interswitch hosted checkout,
-          or send the patient to OPay from the saved bill.
+          WhatsApp-first collection for the patient, with assisted card and OPay actions still
+          available for clinic staff when needed.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -82,15 +118,59 @@ export function PaymentReadinessCard({
           </div>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Button onClick={onPayWithCard} disabled={isBlocked || isCardPending}>
-            <CreditCardIcon data-icon="inline-start" />
-            Pay with Card
-          </Button>
-          <Button variant="outline" onClick={onPayWithOPay} disabled={isBlocked || isOpayPending}>
-            <WalletIcon data-icon="inline-start" />
-            Pay with OPay
-          </Button>
+        <div className="rounded-none border p-3">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Request status</p>
+          <p className="capitalize">{requestStatusLabel}</p>
+          {paymentRequestSentAt ? (
+            <p className="text-sm text-muted-foreground">
+              Sent: {new Date(paymentRequestSentAt).toLocaleString("en-NG")}
+            </p>
+          ) : null}
+          {paymentRequestDeliveredAt ? (
+            <p className="text-sm text-muted-foreground">
+              Delivered: {new Date(paymentRequestDeliveredAt).toLocaleString("en-NG")}
+            </p>
+          ) : null}
+          {paymentRequestReadAt ? (
+            <p className="text-sm text-muted-foreground">
+              Read: {new Date(paymentRequestReadAt).toLocaleString("en-NG")}
+            </p>
+          ) : null}
+          {paymentRequestAutoResendAt ? (
+            <p className="text-sm text-muted-foreground">
+              Auto resend at: {new Date(paymentRequestAutoResendAt).toLocaleString("en-NG")}
+            </p>
+          ) : null}
+          {paymentRequestFailedReason ? (
+            <p className="text-sm text-destructive">{paymentRequestFailedReason}</p>
+          ) : null}
+        </div>
+
+        <Button onClick={onSendPaymentRequest} disabled={isBlocked || isWhatsAppPending || !onSendPaymentRequest}>
+          <ChatCircleTextIcon data-icon="inline-start" />
+          {sendLabel}
+        </Button>
+
+        <Separator />
+
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Assisted payment</p>
+            <p className="text-sm text-muted-foreground">
+              Use these only when staff need to help the patient complete checkout directly.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button onClick={onPayWithCard} disabled={isBlocked || isCardPending}>
+              <CreditCardIcon data-icon="inline-start" />
+              Pay with Card
+            </Button>
+            <Button variant="outline" onClick={onPayWithOPay} disabled={isBlocked || isOpayPending}>
+              <WalletIcon data-icon="inline-start" />
+              Pay with OPay
+            </Button>
+          </div>
         </div>
 
         {onConfirmOPay && transactionReference ? (

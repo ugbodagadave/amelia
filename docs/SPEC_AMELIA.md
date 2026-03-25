@@ -105,7 +105,7 @@ A working web application deployed on Vercel that a private clinic's front desk 
 | **Patient Registration** | Capture patient demographics including NIN — required for NHIA claim approval |
 | **Bill Builder** | Log services, investigations, medications with amounts from a service catalog |
 | **Auth Code Tracker** | Flag every HMO procedure as "awaiting auth." Lock bill until auth code is entered. Never lose one again. |
-| **Interswitch Payment Collection** | Web Checkout (card), OPay Wallet, USSD, QR — all channels, webhook-reconciled in real time |
+| **Interswitch Payment Collection** | WhatsApp-first payment requests that open Amelia's public payment page, with Web Checkout (card) and OPay wallet settlement reconciled in real time |
 | **HMO Claims Generator** | One-click export: auto-filled claims form PDF + Medical Director cover letter, per HMO template |
 | **TPA Submission Tracker** | Log when claim was sent, to which TPA, and track the 14-day payment window |
 | **Revenue Dashboard** | Real-time: collections today, outstanding bills, claim submission status, overdue TPA payments |
@@ -227,24 +227,18 @@ Staff opens new bill for patient:
 ════════════════════════════════════════
 STEP 4A: PAYMENT COLLECTION (Self-Pay)
 ════════════════════════════════════════
-Amelia calls Interswitch Web Checkout API:
-  → System generates a payment hash for this exact bill
-  → Redirects patient to Interswitch hosted checkout page (card payment)
+Staff clicks `Send payment request` on the saved bill
+  → Amelia generates or reuses a tokenized public payment link
+  → Amelia sends the approved WhatsApp Utility template to the patient
+  → CTA opens Amelia's public payment page on `app.getamelia.online/pay/:token`
 
-System also initializes:
-  ├── OPay Wallet payment (redirect to OPay for wallet payment)
-  └── QR code (Interswitch QR API)
+Patient pays on their own device via:
+  ├── Card on Interswitch Web Checkout
+  └── OPay Wallet
 
-Patient receives SMS via Africa's Talking:
-  "Your bill at [Clinic Name] is ₦12,500.
-   Pay online: [link]
-   Questions? Call [clinic number]"
-
-Patient pays via:
-  ├── Card on Web Checkout page
-  ├── OPay Wallet
-  ├── USSD code
-  └── QR code
+Clinic staff can still use assisted-payment fallbacks:
+  ├── Pay with Card
+  └── Pay with OPay
 
 ════════════════════════════════════════
 STEP 4B: PAYMENT COLLECTION (HMO Co-Pay)

@@ -56,6 +56,7 @@ export function BillDetailPage() {
   const bill = useQuery(api.bills.getById, billId ? { billId: billId as never } : "skip")
   const confirmAuthCode = useMutation(api.bills.confirmAuthCode)
   const changeAuthCode = useMutation(api.bills.changeAuthCode)
+  const sendPaymentRequestViaWhatsApp = useAction(api.payments.sendPaymentRequestViaWhatsApp)
   const initiateCardPayment = useAction(api.payments.initiateCardPayment)
   const initiateOPayPayment = useAction(api.payments.initiateOPayPayment)
   const confirmOPayPayment = useAction(api.payments.confirmOPayPayment)
@@ -63,6 +64,7 @@ export function BillDetailPage() {
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false)
   const [authCodeDraft, setAuthCodeDraft] = useState("")
   const [isSavingAuth, setIsSavingAuth] = useState(false)
+  const [isWhatsAppPending, setIsWhatsAppPending] = useState(false)
   const [isCardPending, setIsCardPending] = useState(false)
   const [isOpayPending, setIsOpayPending] = useState(false)
   const [isConfirmingOpay, setIsConfirmingOpay] = useState(false)
@@ -123,6 +125,23 @@ export function BillDetailPage() {
       toast.error(error instanceof Error ? error.message : "Unable to start card payment.")
     } finally {
       setIsCardPending(false)
+    }
+  }
+
+  async function handleSendPaymentRequest() {
+    if (!billId) {
+      return
+    }
+
+    setIsWhatsAppPending(true)
+    try {
+      const response = await sendPaymentRequestViaWhatsApp({ billId: billId as never })
+      setPaymentLink(response.paymentUrl)
+      toast.success("Payment request sent on WhatsApp.")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to send payment request.")
+    } finally {
+      setIsWhatsAppPending(false)
     }
   }
 
@@ -439,9 +458,17 @@ export function BillDetailPage() {
             paymentType={bill.patient.paymentType}
             paymentLink={paymentLink}
             transactionReference={transactionReference}
+            paymentRequestStatus={bill.paymentRequestStatus ?? null}
+            paymentRequestSentAt={bill.paymentRequestSentAt ?? null}
+            paymentRequestDeliveredAt={bill.paymentRequestDeliveredAt ?? null}
+            paymentRequestReadAt={bill.paymentRequestReadAt ?? null}
+            paymentRequestFailedReason={bill.paymentRequestFailedReason ?? null}
+            paymentRequestAutoResendAt={bill.paymentRequestAutoResendAt ?? null}
+            isWhatsAppPending={isWhatsAppPending}
             isCardPending={isCardPending}
             isOpayPending={isOpayPending}
             isConfirmingOpay={isConfirmingOpay}
+            onSendPaymentRequest={() => void handleSendPaymentRequest()}
             onPayWithCard={() => void handleCardPayment()}
             onPayWithOPay={() => void handleOPayPayment()}
             onConfirmOPay={() => void handleConfirmOPayPayment()}
