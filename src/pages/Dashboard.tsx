@@ -1,73 +1,128 @@
 import { useQuery } from "convex/react"
-import { BuildingsIcon, FirstAidKitIcon, ShieldCheckIcon } from "@phosphor-icons/react"
+import {
+  CurrencyNgnIcon,
+  LockIcon,
+  ReceiptIcon,
+  WarningCircleIcon,
+} from "@phosphor-icons/react"
 import { api } from "../../convex/_generated/api"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { buildClaimBatchAlertId } from "@/lib/dashboardStats"
+import { formatCurrency, formatDateShort } from "@/lib/formatting"
+import type { DashboardAlert } from "@/components/dashboard/AlertBanner"
+import { AlertBanner } from "@/components/dashboard/AlertBanner"
+import { LiveBadge } from "@/components/dashboard/LiveBadge"
+import { PaymentMixChart } from "@/components/dashboard/PaymentMixChart"
+import { RecentBillsTable } from "@/components/dashboard/RecentBillsTable"
+import { SevenDayRevenueChart } from "@/components/dashboard/SevenDayRevenueChart"
+import { StatCard } from "@/components/dashboard/StatCard"
 
-export function DashboardPage() {
-  const clinic = useQuery(api.clinics.getCurrentClinic)
-  const services = useQuery(api.serviceCatalog.listForClinic)
-  type ServiceCatalogItem = NonNullable<typeof services>[number]
+type DashboardStats = NonNullable<ReturnType<typeof useQuery<typeof api.dashboard.getDashboardStats>>>
 
-  if (clinic === undefined || services === undefined) {
-    return (
-      <div className="grid gap-4 md:grid-cols-2">
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-48 w-full" />
-      </div>
-    )
+function buildAlerts(stats: DashboardStats): DashboardAlert[] {
+  const alerts: DashboardAlert[] = []
+
+  for (const batch of stats.overdueClaimBatches) {
+    const dueDateText = batch.expectedPaymentBy
+      ? ` — expected by ${new Date(batch.expectedPaymentBy).toLocaleDateString("en-NG", {
+          day: "numeric",
+          month: "short",
+        })}`
+      : ""
+    alerts.push({
+      id: buildClaimBatchAlertId(batch._id),
+      variant: "destructive",
+      title: "Overdue TPA Payment",
+      description: `${batch.hmoName} via ${batch.tpaName}${dueDateText}`,
+    })
   }
 
-  return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-mono text-xl">{clinic?.name ?? "Clinic workspace"}</CardTitle>
-          <CardDescription>
-            Phase 1 is active. Your clinic profile and starter catalog are now the source of truth
-            for every patient and bill that follows.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-1 border p-4">
-            <span className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              <BuildingsIcon />
-              Facility code
-            </span>
-            <span className="text-sm font-medium">{clinic?.nhiaFacilityCode}</span>
-          </div>
-          <div className="grid gap-1 border p-4">
-            <span className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              <ShieldCheckIcon />
-              Medical Director
-            </span>
-            <span className="text-sm font-medium">{clinic?.medicalDirectorName}</span>
-          </div>
-        </CardContent>
-      </Card>
+  if (stats.pendingAuthCount > 0) {
+    alerts.push({
+      id: "auth-pending",
+      variant: "warning",
+      title: "Authorization Codes Pending",
+      description: `${stats.pendingAuthCount} bill${stats.pendingAuthCount === 1 ? "" : "s"} awaiting authorization code — payment cannot proceed until confirmed.`,
+    })
+  }
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 font-mono text-xl">
-            <FirstAidKitIcon />
-            Starter catalog
-          </CardTitle>
-          <CardDescription>
-            Review the seeded services in Settings before patient registration begins.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {services.slice(0, 8).map((service: ServiceCatalogItem) => (
-            <Badge key={service._id} variant="secondary">
-              {service.name}
-            </Badge>
-          ))}
-          {services.length > 8 ? (
-            <Badge variant="outline">+{services.length - 8} more services</Badge>
-          ) : null}
-        </CardContent>
-      </Card>
+  return alerts
+}
+
+export function DashboardPage() {
+  const stats = useQuery(api.dashboard.getDashboardStats)
+  const sevenDayRevenue = useQuery(api.dashboard.getSevenDayRevenue)
+  const paymentMix = useQuery(api.dashboard.getPaymentMix)
+  const recentBills = useQuery(api.dashboard.getRecentBills)
+
+  const isLoading = stats === undefined
+  const alerts = stats ? buildAlerts(stats) : []
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* ── Page header ── */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-mono text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+            {new Date().toLocaleDateString("en-NG", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+          </p>
+        </div>
+        <LiveBadge />
+      </div>
+
+      {/* ── Dismissible alerts ── */}
+      {alerts.length > 0 && <AlertBanner alerts={alerts} />}
+
+      {/* ── 4-up stat cards ── */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="Today's Collections"
+          value={isLoading ? "—" : formatCurrency(stats.todayCollections)}
+          icon={<CurrencyNgnIcon className="size-3.5" />}
+          variant="revenue"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Outstanding Bills"
+          value={isLoading ? "—" : `${stats.outstandingBillsCount}`}
+          subLabel={
+            isLoading || stats.outstandingBillsCount === 0
+              ? undefined
+              : formatCurrency(stats.outstandingBillsSum)
+          }
+          icon={<ReceiptIcon className="size-3.5" />}
+          variant={!isLoading && stats.outstandingBillsCount > 0 ? "warning" : "neutral"}
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Pending Auth Codes"
+          value={isLoading ? "—" : `${stats.pendingAuthCount}`}
+          icon={<LockIcon className="size-3.5" />}
+          variant={!isLoading && stats.pendingAuthCount > 0 ? "warning" : "neutral"}
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Overdue TPA Payments"
+          value={isLoading ? "—" : `${stats.overdueClaimBatchCount}`}
+          icon={<WarningCircleIcon className="size-3.5" />}
+          variant={!isLoading && stats.overdueClaimBatchCount > 0 ? "critical" : "neutral"}
+          isLoading={isLoading}
+        />
+      </div>
+
+      {/* ── Charts row ── */}
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)]">
+        <SevenDayRevenueChart data={sevenDayRevenue} />
+        <PaymentMixChart data={paymentMix} />
+      </div>
+
+      {/* ── Recent bills table ── */}
+      <RecentBillsTable bills={recentBills} />
     </div>
   )
 }

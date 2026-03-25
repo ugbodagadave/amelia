@@ -11,6 +11,7 @@
 import type * as bills from "../bills.js";
 import type * as claims from "../claims.js";
 import type * as clinics from "../clinics.js";
+import type * as dashboard from "../dashboard.js";
 import type * as http from "../http.js";
 import type * as inngestClient from "../inngestClient.js";
 import type * as lib_auth from "../lib/auth.js";
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   bills: typeof bills;
   claims: typeof claims;
   clinics: typeof clinics;
+  dashboard: typeof dashboard;
   http: typeof http;
   inngestClient: typeof inngestClient;
   "lib/auth": typeof lib_auth;

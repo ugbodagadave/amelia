@@ -55,6 +55,8 @@ This project is heavily built on shadcn/ui. All UI must be built with shadcn com
 ## Code Rules
 - No magic strings — API endpoints, event names, status values defined as constants
 - Type safety — no `any` types, end-to-end typed Convex functions
+- Keep modules small and modular. Prefer splitting files by responsibility, and extract submodules once a file starts
+   becoming hard to navigate, review, or reason about.
 - No over-engineering — minimum complexity for the current task
 
 ## Key Docs

@@ -59,13 +59,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { CLAIM_WORKFLOW_STEP, type ClaimScoreBand } from "@/lib/claims"
 import type { DateRange } from "react-day-picker"
 
-function formatCurrency(value: number) {
-  return value.toLocaleString("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  })
-}
+import { formatCurrency } from "@/lib/formatting"
 
 function formatDate(value?: number | null) {
   if (!value) {

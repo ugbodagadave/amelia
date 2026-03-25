@@ -15,7 +15,9 @@
       "Bash(ls -la /c/Users/HP/amelia/convex/auth*)",
       "Bash(xargs ls:*)",
       "Bash(bun test:*)",
-      "Bash(bunx tsc:*)"
+      "Bash(bunx tsc:*)",
+      "Bash(grep:*)",
+      "Bash(wc:*)"
     ]
   }
 }

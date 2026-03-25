@@ -40,13 +40,7 @@ function buildBillDetailPath(billId: string) {
   return ROUTES.BILL_DETAIL.replace(":billId", billId)
 }
 
-function formatCurrency(value: number) {
-  return value.toLocaleString("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  })
-}
+import { formatCurrency } from "@/lib/formatting"
 
 export function BillsPage() {
   const bills = useQuery(api.bills.list)
