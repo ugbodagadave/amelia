@@ -15,7 +15,6 @@ import type { Doc, Id } from "./_generated/dataModel"
 import { requireClerkUserId } from "./lib/auth"
 import {
   BILL_PAYMENT_CHANNEL,
-  INTERSWITCH_RESPONSE_CODE,
   buildPublicPaymentPath,
   buildTxnRef,
   buildWebCheckoutHash,
@@ -131,31 +130,6 @@ function buildClinicPaymentLink(token: string) {
 
 function buildCardCallbackUrl() {
   return `${resolveConvexSiteUrl()}/api/payments/interswitch/card-callback`
-}
-
-function buildCardResultUrl(input: {
-  status: "success" | "failed"
-  message: string
-  billId: Id<"bills"> | null
-  txnRef: string
-  payRef?: string
-  responseCode: string
-}) {
-  const url = new URL(`${resolveAppUrl()}/pay/callback/card`)
-  url.searchParams.set("status", input.status)
-  url.searchParams.set("message", input.message)
-  url.searchParams.set("txnref", input.txnRef)
-  url.searchParams.set("ResponseCode", input.responseCode)
-
-  if (input.billId) {
-    url.searchParams.set("billId", input.billId)
-  }
-
-  if (input.payRef) {
-    url.searchParams.set("payRef", input.payRef)
-  }
-
-  return url.toString()
 }
 
 function ensureBillIsReadyForCollection(bill: {

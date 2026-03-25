@@ -6,6 +6,8 @@ import {
   APP_BOOTSTRAP_PING_FUNCTION_ID,
   BILL_PAYMENT_LINK_SENT_EVENT,
   BILL_PAYMENT_LINK_SENT_FUNCTION_ID,
+  CLAIMS_OVERDUE_CHECK_EVENT,
+  CLAIMS_OVERDUE_CHECK_FUNCTION_ID,
   PAYMENT_CONFIRMED_EVENT,
   PAYMENT_CONFIRMED_FUNCTION_ID,
   inngestFunctions,
@@ -27,9 +29,11 @@ describe("Inngest setup", () => {
   test("registers the bootstrap function with a stable id", () => {
     expect(APP_BOOTSTRAP_PING_FUNCTION_ID).toBe("app-bootstrap-ping")
     expect(BILL_PAYMENT_LINK_SENT_EVENT).toBe("bill/payment_link.sent")
+    expect(CLAIMS_OVERDUE_CHECK_EVENT).toBe("claims/overdue.check")
     expect(PAYMENT_CONFIRMED_EVENT).toBe("payment/confirmed")
     expect(BILL_PAYMENT_LINK_SENT_FUNCTION_ID).toBe("bill-payment-link-sent")
+    expect(CLAIMS_OVERDUE_CHECK_FUNCTION_ID).toBe("claims-overdue-check")
     expect(PAYMENT_CONFIRMED_FUNCTION_ID).toBe("payment-confirmed")
-    expect(inngestFunctions).toHaveLength(3)
+    expect(inngestFunctions).toHaveLength(4)
   })
 })

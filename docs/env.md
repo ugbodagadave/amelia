@@ -126,6 +126,23 @@ E2B_API_KEY=e2b_xxxxxxxxxxxxxxxxxxxx
 
 ---
 
+## Groq (LLM Scoring)
+
+```env
+# From: console.groq.com → API Keys
+GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx
+GROQ_MODEL=moonshotai/kimi-k2-instruct-0905
+GROQ_BASE_URL=https://api.groq.com/openai/v1
+GROQ_TEMPERATURE=0.6
+GROQ_MAX_COMPLETION_TOKENS=4096
+GROQ_TOP_P=1
+```
+
+**Where to get it:** `console.groq.com` → API Keys.
+**Used for:** Claim completeness scoring and diagnosis-quality warnings in Phase 5.
+
+---
+
 ## Firecrawl (Web Scraping — Setup Phase Only)
 
 ```env
@@ -171,6 +188,12 @@ VITE_APP_URL=http://localhost:5173                # development
 | `AT_USERNAME` | Convex actions | ✅ |
 | `AT_API_KEY` | Convex actions | ✅ |
 | `E2B_API_KEY` | Convex actions | ✅ |
+| `GROQ_API_KEY` | Convex actions | ✅ |
+| `GROQ_MODEL` | Convex actions | ✅ |
+| `GROQ_BASE_URL` | Convex actions | ✅ |
+| `GROQ_TEMPERATURE` | Convex actions | ✅ |
+| `GROQ_MAX_COMPLETION_TOKENS` | Convex actions | ✅ |
+| `GROQ_TOP_P` | Convex actions | ✅ |
 | `FIRECRAWL_API_KEY` | Setup scripts only | ⬜ (pre-build) |
 | `VITE_APP_URL` | Frontend + SMS | ✅ |
 
@@ -196,6 +219,12 @@ npx convex env set INNGEST_SIGNING_KEY "your_value"
 npx convex env set AT_USERNAME "sandbox"
 npx convex env set AT_API_KEY "your_value"
 npx convex env set E2B_API_KEY "your_value"
+npx convex env set GROQ_API_KEY "your_value"
+npx convex env set GROQ_MODEL "moonshotai/kimi-k2-instruct-0905"
+npx convex env set GROQ_BASE_URL "https://api.groq.com/openai/v1"
+npx convex env set GROQ_TEMPERATURE "0.6"
+npx convex env set GROQ_MAX_COMPLETION_TOKENS "4096"
+npx convex env set GROQ_TOP_P "1"
 ```
 
 View current Convex env: `npx convex env list`
@@ -240,6 +269,14 @@ AT_API_KEY=
 
 # E2B (set via `npx convex env set`)
 E2B_API_KEY=
+
+# GROQ (set via `npx convex env set`)
+GROQ_API_KEY=
+GROQ_MODEL=moonshotai/kimi-k2-instruct-0905
+GROQ_BASE_URL=https://api.groq.com/openai/v1
+GROQ_TEMPERATURE=0.6
+GROQ_MAX_COMPLETION_TOKENS=4096
+GROQ_TOP_P=1
 
 # FIRECRAWL (local scripts only)
 FIRECRAWL_API_KEY=

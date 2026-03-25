@@ -17,6 +17,12 @@ const claimBatchStatusValidator = v.union(
   v.literal("overdue"),
 )
 
+const claimScoreBandValidator = v.union(
+  v.literal("green"),
+  v.literal("amber"),
+  v.literal("red"),
+)
+
 const paymentChannelValidator = v.union(v.literal("card"), v.literal("opay"))
 
 export default defineSchema({
@@ -166,10 +172,13 @@ export default defineSchema({
     periodEnd: v.string(),
     billIds: v.array(v.id("bills")),
     totalClaimed: v.number(),
-    claimsPdfUrl: v.string(),
-    coverLetterPdfUrl: v.string(),
-    submittedAt: v.number(),
-    expectedPaymentBy: v.number(),
+    claimsPdfUrl: v.optional(v.string()),
+    coverLetterPdfUrl: v.optional(v.string()),
+    mergedPdfStorageId: v.optional(v.id("_storage")),
+    zipBundleStorageId: v.optional(v.id("_storage")),
+    coverLetterStorageId: v.optional(v.id("_storage")),
+    submittedAt: v.optional(v.number()),
+    expectedPaymentBy: v.optional(v.number()),
     status: claimBatchStatusValidator,
     paidAt: v.optional(v.number()),
   })
@@ -180,6 +189,11 @@ export default defineSchema({
     clinicId: v.id("clinics"),
     claimBatchId: v.id("claim_batches"),
     billId: v.id("bills"),
+    claimPdfStorageId: v.optional(v.id("_storage")),
+    completenessScore: v.optional(v.number()),
+    scoreBand: v.optional(claimScoreBandValidator),
+    blockingIssues: v.optional(v.array(v.string())),
+    warningIssues: v.optional(v.array(v.string())),
     createdAt: v.number(),
   })
     .index("by_claim_batch", ["claimBatchId"])
@@ -204,12 +218,16 @@ export default defineSchema({
   hmo_templates: defineTable({
     clinicId: v.id("clinics"),
     hmoName: v.string(),
+    tpaName: v.optional(v.string()),
+    tpaEmail: v.optional(v.string()),
     additionalFields: v.array(
       v.object({
         label: v.string(),
         fieldKey: v.string(),
       }),
     ),
+    templateAssetPath: v.optional(v.string()),
+    templateFieldMapJson: v.optional(v.string()),
     formLayoutConfig: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),

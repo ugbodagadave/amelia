@@ -309,23 +309,25 @@ Auth code entry:
 
 ---
 
-## Phase 5 — HMO Claims Generator
+## ⏳ Phase 5 — HMO Claims Generator
 
 **Goal:** Staff can select a batch of authorized bills and generate a correctly formatted claims PDF + Medical Director cover letter, ready for TPA submission.
 
-### 5.1 Claims Page (`/claims`)
+### ✅ 5.1 Claims Page (`/claims`)
 - Left panel: patient selection list (all HMO bills with status `paid` or `auth_confirmed`, not yet claimed)
 - Each patient card shows: name, HMO, amount, auth code (green tick), locked-out patients (missing auth — greyed out, cannot select)
+- Bulk action: `Select all available` for all eligible claim-ready bills across pages
+- Pagination: 10 claim-ready HMO bills per page in the left panel scroll area
 - Running batch summary: selected count, total billed, less 10%, net receivable
 - Right panel: claim options form + generate button
 
-### 5.2 Claim Options Form
+### ✅ 5.2 Claim Options Form
 - HMO Template selector (dropdown from `hmo_templates` table)
 - TPA Name + TPA Email (pre-filled from template, editable)
 - Period covered: date range picker (start + end)
 - Medical Director name (pre-filled from clinic profile, editable)
 
-### 5.3 PDF Generation Architecture
+### ✅ 5.3 PDF Generation Architecture
 Two options evaluated for hackathon:
 - **Primary:** `pdf-lib` — pure JS, no server, precise field placement. Use for claims form.
 - **Fallback:** Puppeteer in E2B sandbox — render HTML template to PDF. Use for cover letter.
@@ -343,7 +345,7 @@ Cover letter PDF generation (`generateCoverLetterPDF`):
 - Render to PDF via Puppeteer in E2B sandbox
 - Export and store same as above
 
-### 5.4 Batch Generation Flow
+### ✅ 5.4 Batch Generation Flow
 Convex action: `generateClaimBatch(billIds, options)`
 - Validate: all bills have auth codes
 - For each bill: call `generateClaimPDF`
@@ -362,7 +364,7 @@ Frontend: 5-step animated progress bar during generation (mirrors demo):
 
 Success state: download buttons for Claims PDF bundle + Cover Letter.
 
-### 5.5 TPA Submission Tracker
+### ✅ 5.5 TPA Submission Tracker
 After generation, staff logs submission:
 - TPA name, TPA email, submission date
 - System calculates `expectedPaymentBy` = `submittedAt + 14 days`
@@ -378,7 +380,7 @@ TPA Submission Tracker list on claims page:
 - Each batch: HMO name, submission date, claim count, total amount, status badge (Pending / Overdue / Paid)
 - "Mark as Paid" button → updates status, logs `paidAt`
 
-### 5.6 AI Claim Completeness Scorer
+### ✅ 5.6 AI Claim Completeness Scorer
 Before generating the batch, run AI validation:
 - Convex action: `scoreClaimCompleteness(billIds)`
 - For each bill, check:
@@ -391,6 +393,8 @@ Before generating the batch, run AI validation:
 - Return: per-bill score (0–100) + array of issues
 - Display in UI before generation: green (80+), amber (50–79), red (<50)
 - Red issues block generation; amber issues show warning but allow proceed
+
+**Implementation note:** Phase 5 is now in progress in the codebase with Groq-backed scoring, Convex claim batch actions, the `/claims` workspace, merged PDF + ZIP artifact generation, tracker actions, and a refactored claims backend split across focused Convex helper modules for scoring, PDF generation, and data loading. Real HMO PDF template assets are still expected to be supplied and wired into the field-map layer for final production-quality form layouts.
 
 **Tests for Phase 5:**
 - PDF generation: output is valid PDF binary (check magic bytes `%PDF`)

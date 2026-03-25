@@ -51,6 +51,9 @@ export function PaymentLinkPage() {
     setIsCardPending(true)
     try {
       const response = await initiateCardPayment({ token })
+      if (!("fields" in response) || !response.endpoint) {
+        throw new Error("Card payment session did not return hosted checkout fields.")
+      }
       submitHostedPayment(response.endpoint, response.fields)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to start card payment.")
@@ -63,9 +66,13 @@ export function PaymentLinkPage() {
     setIsOpayPending(true)
     try {
       const response = await initiateOPayPayment({ token })
-      setTransactionReference(response.transactionReference)
+      if (!("redirectUrl" in response)) {
+        throw new Error("OPay session did not return a redirect URL.")
+      }
+      setTransactionReference(response.transactionReference ?? null)
       setShouldAutoConfirmOpay(true)
-      window.open(response.redirectUrl, "_blank", "noopener,noreferrer")
+      const redirectUrl = response.redirectUrl
+      window.open(redirectUrl, "_blank", "noopener,noreferrer")
       toast.success("Complete the OPay payment, then return here and confirm it.")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to start OPay payment.")

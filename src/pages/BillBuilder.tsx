@@ -609,6 +609,9 @@ export function BillBuilderPage() {
                 : BILL_STATUS.AWAITING_AUTH
           }
           hasAuthCode={!!formState.authorizationCode.trim()}
+          paymentType={paymentType}
+          onPayWithCard={() => {}}
+          onPayWithOPay={() => {}}
         />
         <Button onClick={() => void handleSave()} disabled={isSaving}>
           {isSaving ? <Spinner data-icon="inline-start" /> : <FileTextIcon data-icon="inline-start" />}

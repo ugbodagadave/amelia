@@ -9,10 +9,15 @@
  */
 
 import type * as bills from "../bills.js";
+import type * as claims from "../claims.js";
 import type * as clinics from "../clinics.js";
 import type * as http from "../http.js";
 import type * as inngestClient from "../inngestClient.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_claimsData from "../lib/claimsData.js";
+import type * as lib_claimsPdf from "../lib/claimsPdf.js";
+import type * as lib_claimsScoring from "../lib/claimsScoring.js";
+import type * as lib_claimsTypes from "../lib/claimsTypes.js";
 import type * as patients from "../patients.js";
 import type * as payments from "../payments.js";
 import type * as serviceCatalog from "../serviceCatalog.js";
@@ -25,10 +30,15 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   bills: typeof bills;
+  claims: typeof claims;
   clinics: typeof clinics;
   http: typeof http;
   inngestClient: typeof inngestClient;
   "lib/auth": typeof lib_auth;
+  "lib/claimsData": typeof lib_claimsData;
+  "lib/claimsPdf": typeof lib_claimsPdf;
+  "lib/claimsScoring": typeof lib_claimsScoring;
+  "lib/claimsTypes": typeof lib_claimsTypes;
   patients: typeof patients;
   payments: typeof payments;
   serviceCatalog: typeof serviceCatalog;
