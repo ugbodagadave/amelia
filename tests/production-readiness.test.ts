@@ -43,4 +43,12 @@ describe("Production readiness guide and welcome email flow", () => {
     expect(welcomeFunctionSource).toContain("RESEND_FROM_EMAIL")
     expect(welcomeFunctionSource).toContain("Welcome to Amelia")
   })
+
+  test("adds a vercel spa rewrite so clerk callback routes do not 404", async () => {
+    const vercelConfigSource = await Bun.file("./vercel.json").text()
+
+    expect(vercelConfigSource).toContain('"rewrites"')
+    expect(vercelConfigSource).toContain('"/(.*)"')
+    expect(vercelConfigSource).toContain('"/index.html"')
+  })
 })
