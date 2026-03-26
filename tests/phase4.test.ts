@@ -1,11 +1,14 @@
 import { describe, expect, test } from "bun:test"
 import { ROUTES } from "../src/constants/routes"
+import { NIGERIAN_BANK_OPTIONS } from "../data/nigerian-banks"
 import {
   BILL_PAYMENT_CHANNEL,
   PAYMENT_CALLBACK_STATUS,
   PAYMENT_REQUEST_CHANNEL,
   PAYMENT_REQUEST_STATUS,
+  extractMarketplaceAccountName,
   extractMarketplaceBankOptions,
+  getMarketplaceNinVerificationResult,
   buildPublicPaymentPath,
   buildTxnRef,
   buildWebCheckoutHash,
@@ -16,6 +19,8 @@ import {
   parseMetaMessageStatus,
   shouldAutoResendPaymentRequest,
   buildWhatsAppTemplatePayload,
+  getBankVerificationFailureMessage,
+  hasVerifiedBankAccountName,
   validateBankVerificationInput,
   validatePaymentLinkToken,
 } from "../src/lib/payments"
@@ -76,6 +81,21 @@ describe("Phase 4 - Payment helpers", () => {
     })
   })
 
+  test("normalizes raw bank verification runtime errors into a user-facing message", () => {
+    expect(getBankVerificationFailureMessage(new Error("AbortError Called by client"))).toBe(
+      "Account could not be verified right now. Check the details and try again.",
+    )
+    expect(getBankVerificationFailureMessage(new Error("Marketplace request timed out."))).toBe(
+      "Account could not be verified right now. Check the details and try again.",
+    )
+  })
+
+  test("treats bank verification as successful only when a resolved account name is present", () => {
+    expect(hasVerifiedBankAccountName("FRUITEX CLINIC TEST ACCOUNT")).toBe(true)
+    expect(hasVerifiedBankAccountName("")).toBe(false)
+    expect(hasVerifiedBankAccountName("   ")).toBe(false)
+  })
+
   test("extracts and sorts bank options from the marketplace bank-list envelope", () => {
     expect(
       extractMarketplaceBankOptions({
@@ -91,6 +111,74 @@ describe("Phase 4 - Payment helpers", () => {
       { name: "Access Bank", code: "044" },
       { name: "Zenith Bank", code: "057" },
     ])
+  })
+
+  test("extracts bank options from the marketplace bank-list bare array response", () => {
+    expect(
+      extractMarketplaceBankOptions([
+        { name: "Zenith Bank", code: "057" },
+        { name: "Access Bank", code: "044" },
+      ]),
+    ).toEqual([
+      { name: "Access Bank", code: "044" },
+      { name: "Zenith Bank", code: "057" },
+    ])
+  })
+
+  test("extracts verified account name from the nested marketplace resolve response", () => {
+    expect(
+      extractMarketplaceAccountName({
+        success: true,
+        code: "200",
+        message: "request processed successfully",
+        data: {
+          bankDetails: {
+            accountName: "MICHAEL JOHN DOE",
+          },
+        },
+      }),
+    ).toBe("MICHAEL JOHN DOE")
+  })
+
+  test("maps marketplace NIN responses into success and business-failure outcomes", () => {
+    expect(
+      getMarketplaceNinVerificationResult({
+        nin_check: {
+          status: "EXACT_MATCH",
+        },
+      }),
+    ).toEqual({
+      isVerified: true,
+      status: "EXACT_MATCH",
+    })
+
+    expect(
+      getMarketplaceNinVerificationResult({
+        nin_check: {
+          status: "NOT_MATCH",
+        },
+      }),
+    ).toEqual({
+      isVerified: false,
+      status: "NOT_MATCH",
+    })
+  })
+
+  test("ships a static alphabetized Nigerian bank catalog for the settlement-bank UI", () => {
+    expect(NIGERIAN_BANK_OPTIONS.length).toBeGreaterThan(200)
+    expect(NIGERIAN_BANK_OPTIONS).toContainEqual({ name: "Access Bank", code: "044" })
+    expect(NIGERIAN_BANK_OPTIONS).toContainEqual({ name: "Guaranty Trust Bank", code: "058" })
+    expect(NIGERIAN_BANK_OPTIONS).toContainEqual({ name: "Zenith Bank", code: "057" })
+    expect(NIGERIAN_BANK_OPTIONS).toContainEqual({ name: "Moniepoint MFB", code: "50515" })
+    expect(NIGERIAN_BANK_OPTIONS).toContainEqual({
+      name: "OPay Digital Services Limited (OPay)",
+      code: "999992",
+    })
+    expect(
+      NIGERIAN_BANK_OPTIONS.every((bank, index, banks) =>
+        index === 0 ? true : banks[index - 1].name.localeCompare(bank.name) <= 0,
+      ),
+    ).toBe(true)
   })
 })
 
@@ -231,6 +319,7 @@ describe("Phase 4 - Routing and source integration", () => {
     const onboardingSource = await Bun.file("./src/pages/Onboarding.tsx").text()
     const clinicsSource = await Bun.file("./convex/clinics.ts").text()
     const paymentsSource = await Bun.file("./convex/payments.ts").text()
+    const patientsSource = await Bun.file("./convex/patients.ts").text()
     const httpSource = await Bun.file("./convex/http.ts").text()
     const inngestEventsSource = await Bun.file("./src/inngest/events.ts").text()
     const inngestFunctionsSource = await Bun.file("./src/inngest/functions/index.ts").text()
@@ -256,13 +345,19 @@ describe("Phase 4 - Routing and source integration", () => {
     expect(paymentCallbackCardSource).toContain("View bill")
     expect(paymentCallbackOpaySource).toContain("Confirm payment again")
     expect(paymentCallbackOpaySource).toContain("View bill")
-    expect(onboardingSource).toContain("api.payments.listBanks")
     expect(onboardingSource).toContain("api.payments.verifyBankAccount")
+    expect(onboardingSource).toContain("../../data/nigerian-banks")
+    expect(clinicsSource).toContain("export const createClinicProfile")
+    expect(clinicsSource).toContain("export const updateCurrentClinicProfile")
     expect(clinicsSource).toContain("bankCode")
     expect(clinicsSource).toContain("accountNumber")
     expect(clinicsSource).toContain("accountName")
+    expect(patientsSource).toContain("export const registerPatient")
+    expect(patientsSource).toContain("ninVerificationStatus")
     expect(paymentsSource).toContain("verifyNIN")
     expect(paymentsSource).toContain("getPublicPaymentByToken")
+    expect(paymentsSource).toContain("marketplace_banks")
+    expect(paymentsSource).toContain("BANK_CACHE_STALE_AFTER_MS")
     expect(paymentsSource).toContain("sendPaymentRequestViaWhatsApp")
     expect(paymentsSource).toContain("META_WEBHOOK_VERIFY_TOKEN")
     expect(paymentsSource).toContain("buildWhatsAppTemplatePayload")
@@ -298,6 +393,9 @@ describe("Phase 4 - Routing and source integration", () => {
     expect(schemaSource).toContain("paymentRequestStatus")
     expect(schemaSource).toContain("paymentRequestAttemptCount")
     expect(schemaSource).toContain('index("by_payment_link_token"')
+    expect(schemaSource).toContain("marketplace_banks")
+    expect(schemaSource).toContain("ninVerificationStatus")
+    expect(schemaSource).toContain("bankAccountVerifiedAt")
     expect(envSource).toContain("INTERSWITCH_WEBHOOK_SECRET")
     expect(envSource).toContain("META_ACCESS_TOKEN")
     expect(envSource).toContain("META_PHONE_NUMBER_ID")

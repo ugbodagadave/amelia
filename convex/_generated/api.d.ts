@@ -20,6 +20,7 @@ import type * as lib_claimsData from "../lib/claimsData.js";
 import type * as lib_claimsPdf from "../lib/claimsPdf.js";
 import type * as lib_claimsScoring from "../lib/claimsScoring.js";
 import type * as lib_claimsTypes from "../lib/claimsTypes.js";
+import type * as lib_marketplace from "../lib/marketplace.js";
 import type * as notifications from "../notifications.js";
 import type * as ocr from "../ocr.js";
 import type * as patients from "../patients.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   "lib/claimsPdf": typeof lib_claimsPdf;
   "lib/claimsScoring": typeof lib_claimsScoring;
   "lib/claimsTypes": typeof lib_claimsTypes;
+  "lib/marketplace": typeof lib_marketplace;
   notifications: typeof notifications;
   ocr: typeof ocr;
   patients: typeof patients;

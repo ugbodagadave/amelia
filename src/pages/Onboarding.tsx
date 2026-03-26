@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useUser } from "@clerk/clerk-react"
-import { useAction, useMutation, useQuery } from "convex/react"
+import { useAction, useQuery } from "convex/react"
 import { Navigate, useNavigate } from "react-router-dom"
 import {
   BuildingsIcon,
@@ -16,6 +16,12 @@ import {
   type ClinicOnboardingInput,
   validateClinicOnboardingInput,
 } from "@/lib/clinicOnboarding"
+import {
+  getBankVerificationFailureMessage,
+  hasVerifiedBankAccountName,
+} from "@/lib/payments"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { NIGERIAN_BANK_OPTIONS } from "../../data/nigerian-banks"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -66,17 +72,15 @@ const ONBOARDING_HIGHLIGHTS = [
 export function ClinicOnboardingPage() {
   const navigate = useNavigate()
   const { user } = useUser()
-  const createClinic = useMutation(api.clinics.createClinic)
+  const createClinic = useAction(api.clinics.createClinicProfile)
   const currentClinic = useQuery(api.clinics.getCurrentClinic)
-  const listBanks = useAction(api.payments.listBanks)
   const verifyBankAccount = useAction(api.payments.verifyBankAccount)
 
   const [formState, setFormState] = useState(INITIAL_FORM_STATE)
   const [errors, setErrors] = useState<Partial<Record<ClinicOnboardingField, string>>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [bankOptions, setBankOptions] = useState<Array<{ name: string; code: string }>>([])
-  const [isLoadingBanks, setIsLoadingBanks] = useState(false)
+  const [bankOptions] = useState<Array<{ name: string; code: string }>>(NIGERIAN_BANK_OPTIONS)
   const [isResolvingAccount, setIsResolvingAccount] = useState(false)
 
   if (currentClinic) {
@@ -88,22 +92,6 @@ export function ClinicOnboardingPage() {
     setErrors((current) => ({ ...current, [field]: undefined }))
   }
 
-  const loadBanks = async () => {
-    if (bankOptions.length > 0 || isLoadingBanks) {
-      return
-    }
-
-    setIsLoadingBanks(true)
-    try {
-      const banks = await listBanks()
-      setBankOptions(banks)
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to load bank options.")
-    } finally {
-      setIsLoadingBanks(false)
-    }
-  }
-
   const handleResolveAccount = async () => {
     setIsResolvingAccount(true)
     try {
@@ -111,12 +99,18 @@ export function ClinicOnboardingPage() {
         accountNumber: formState.accountNumber,
         bankCode: formState.bankCode,
       })
+      const isVerified = hasVerifiedBankAccountName(result.accountName)
 
       setFormState((current) => ({
         ...current,
         accountName: result.accountName,
-        bankAccountVerified: Boolean(result.accountName),
+        bankName: result.bankName || current.bankName,
+        bankAccountVerified: isVerified,
       }))
+      if (!isVerified) {
+        throw new Error("Account could not be verified right now. Check the details and try again.")
+      }
+
       setErrors((current) => ({
         ...current,
         bankCode: undefined,
@@ -130,7 +124,7 @@ export function ClinicOnboardingPage() {
         accountName: "",
         bankAccountVerified: false,
       }))
-      toast.error(error instanceof Error ? error.message : "Unable to verify account.")
+      toast.error(getBankVerificationFailureMessage(error))
     } finally {
       setIsResolvingAccount(false)
     }
@@ -371,11 +365,6 @@ export function ClinicOnboardingPage() {
                   </label>
                   <Select
                     value={formState.bankCode}
-                    onOpenChange={(open) => {
-                      if (open) {
-                        void loadBanks()
-                      }
-                    }}
                     onValueChange={(value) => {
                       const selectedBank = bankOptions.find((bank) => bank.code === value)
                       setFormState((current) => ({
@@ -393,24 +382,24 @@ export function ClinicOnboardingPage() {
                       className="w-full"
                       aria-invalid={Boolean(errors.bankCode)}
                     >
-                      <SelectValue
-                        placeholder={isLoadingBanks ? "Loading banks..." : "Select payout bank"}
-                      />
+                      <SelectValue placeholder="Select payout bank" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {bankOptions.length > 0 ? (
-                          bankOptions.map((bank) => (
-                            <SelectItem key={bank.code} value={bank.code}>
-                              {bank.name}
+                    <SelectContent position="popper" side="bottom" align="start" sideOffset={4}>
+                      <ScrollArea className="max-h-72">
+                        <SelectGroup>
+                          {bankOptions.length > 0 ? (
+                            bankOptions.map((bank) => (
+                              <SelectItem key={bank.code} value={bank.code}>
+                                {bank.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-banks" disabled>
+                              No banks available
                             </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="no-banks" disabled>
-                            {isLoadingBanks ? "Loading banks..." : "No banks available"}
-                          </SelectItem>
-                        )}
-                      </SelectGroup>
+                          )}
+                        </SelectGroup>
+                      </ScrollArea>
                     </SelectContent>
                   </Select>
                   {errors.bankCode ? (

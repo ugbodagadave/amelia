@@ -61,5 +61,7 @@ test("general settings keeps the settlement bank control full-width and usable",
   const source = await Bun.file("./src/components/settings/GeneralClinicSettingsSection.tsx").text()
 
   expect(source).toContain('<SelectTrigger className="w-full"')
-  expect(source).toContain('placeholder={isLoadingBanks ? "Loading banks..." : "Select bank"}')
+  expect(source).toContain('placeholder="Select bank"')
+  expect(source).toContain("../../../data/nigerian-banks")
+  expect(source).toContain("ScrollArea")
 })

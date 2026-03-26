@@ -36,6 +36,19 @@ function buildBillBuilderPath(patientId: string) {
   return `${ROUTES.BILLS_NEW}?patientId=${patientId}`
 }
 
+function getNinVerificationLabel(status?: string) {
+  switch (status) {
+    case "verified":
+      return "Verified"
+    case "failed":
+      return "Verification failed"
+    case "unverified":
+      return "Not yet verified"
+    default:
+      return "Not checked"
+  }
+}
+
 export function PatientProfilePage() {
   const { patientId } = useParams<{ patientId: string }>()
   const patient = useQuery(
@@ -100,6 +113,10 @@ export function PatientProfilePage() {
           <DetailItem label="Age" value={patient.age === null ? "Unknown" : String(patient.age)} />
           <DetailItem label="Phone" value={patient.phone} />
           <DetailItem label="NIN" value={patient.maskedNin} />
+          <DetailItem
+            label="NIN status"
+            value={getNinVerificationLabel(patient.ninVerificationStatus)}
+          />
           <DetailItem label="HMO" value={patient.hmoName ?? "Self-pay"} />
           <DetailItem label="NHIS Number" value={patient.enrolleeNhisNo ?? "Not provided"} />
           <DetailItem label="Sex" value={patient.sex === "male" ? "Male" : "Female"} />

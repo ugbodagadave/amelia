@@ -47,6 +47,12 @@ const paymentRequestStatusValidator = v.union(
   v.literal("failed"),
 )
 
+const ninVerificationStatusValidator = v.union(
+  v.literal("unverified"),
+  v.literal("verified"),
+  v.literal("failed"),
+)
+
 export default defineSchema({
   clinics: defineTable({
     name: v.string(),
@@ -59,6 +65,9 @@ export default defineSchema({
     bankName: v.string(),
     accountNumber: v.string(),
     accountName: v.string(),
+    bankAccountVerifiedAt: v.optional(v.number()),
+    bankVerificationProvider: v.optional(v.string()),
+    bankVerificationReference: v.optional(v.string()),
     createdByClerkUserId: v.string(),
     createdAt: v.number(),
   })
@@ -73,6 +82,11 @@ export default defineSchema({
     sex: v.union(v.literal("male"), v.literal("female")),
     phone: v.string(),
     nin: v.optional(v.string()),
+    ninVerificationStatus: v.optional(ninVerificationStatusValidator),
+    ninVerificationProvider: v.optional(v.string()),
+    ninVerifiedAt: v.optional(v.number()),
+    ninVerificationMatchStatus: v.optional(v.string()),
+    ninVerificationReference: v.optional(v.string()),
     paymentType: v.union(v.literal("self_pay"), v.literal("hmo")),
     hmoName: v.optional(v.string()),
     enrolleeNhisNo: v.optional(v.string()),
@@ -306,4 +320,12 @@ export default defineSchema({
   })
     .index("by_recipient_and_created_at", ["recipientClerkUserId", "createdAt"])
     .index("by_recipient_and_read_state", ["recipientClerkUserId", "isRead"]),
+
+  marketplace_banks: defineTable({
+    code: v.string(),
+    name: v.string(),
+    updatedAt: v.number(),
+  })
+    .index("by_code", ["code"])
+    .index("by_updated_at", ["updatedAt"]),
 })

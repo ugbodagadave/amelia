@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { useAction, useMutation, useQuery } from "convex/react"
+import { useAction, useQuery } from "convex/react"
 import { ShieldCheckIcon } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
@@ -11,6 +11,12 @@ import {
   type ClinicOnboardingInput,
   validateClinicOnboardingInput,
 } from "@/lib/clinicOnboarding"
+import {
+  getBankVerificationFailureMessage,
+  hasVerifiedBankAccountName,
+} from "@/lib/payments"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { NIGERIAN_BANK_OPTIONS } from "../../../data/nigerian-banks"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -71,15 +77,13 @@ function formEqual(a: ClinicOnboardingInput, b: ClinicOnboardingInput) {
 
 export function GeneralClinicSettingsSection() {
   const clinic = useQuery(api.clinics.getCurrentClinic)
-  const updateCurrentClinic = useMutation(api.clinics.updateCurrentClinic)
-  const listBanks = useAction(api.payments.listBanks)
+  const updateCurrentClinic = useAction(api.clinics.updateCurrentClinicProfile)
   const verifyBankAccount = useAction(api.payments.verifyBankAccount)
 
   const [formState, setFormState] = useState<ClinicOnboardingInput>(INITIAL_FORM_STATE)
   const [originalForm, setOriginalForm] = useState<ClinicOnboardingInput | null>(null)
   const [errors, setErrors] = useState<Partial<Record<ClinicOnboardingField, string>>>({})
-  const [bankOptions, setBankOptions] = useState<Array<{ name: string; code: string }>>([])
-  const [isLoadingBanks, setIsLoadingBanks] = useState(false)
+  const [bankOptions] = useState<Array<{ name: string; code: string }>>(NIGERIAN_BANK_OPTIONS)
   const [isResolvingAccount, setIsResolvingAccount] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -91,41 +95,14 @@ export function GeneralClinicSettingsSection() {
     }
   }, [clinic, originalForm])
 
-  useEffect(() => {
-    let isMounted = true
-
-    async function loadBanks() {
-      if (bankOptions.length > 0 || isLoadingBanks) {
-        return
-      }
-
-      setIsLoadingBanks(true)
-      try {
-        const banks = await listBanks()
-        if (isMounted) {
-          setBankOptions(banks)
-        }
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Unable to load bank options.")
-      } finally {
-        if (isMounted) {
-          setIsLoadingBanks(false)
-        }
-      }
-    }
-
-    void loadBanks()
-
-    return () => {
-      isMounted = false
-    }
-  }, [bankOptions.length, isLoadingBanks, listBanks])
-
   const isDirty = originalForm === null || !formEqual(formState, originalForm)
   const bankDetailsChanged = useMemo(
     () => (originalForm ? haveClinicBankDetailsChanged(originalForm, formState) : false),
     [formState, originalForm],
   )
+  const selectBankValue = bankOptions.some((bank) => bank.code === formState.bankCode)
+    ? formState.bankCode
+    : ""
 
   const handleChange = (field: ClinicOnboardingField, value: string | boolean) => {
     setFormState((current) => ({ ...current, [field]: value }))
@@ -155,12 +132,18 @@ export function GeneralClinicSettingsSection() {
         accountNumber: formState.accountNumber,
         bankCode: formState.bankCode,
       })
+      const isVerified = hasVerifiedBankAccountName(result.accountName)
 
       setFormState((current) => ({
         ...current,
         accountName: result.accountName,
-        bankAccountVerified: Boolean(result.accountName),
+        bankName: result.bankName || current.bankName,
+        bankAccountVerified: isVerified,
       }))
+      if (!isVerified) {
+        throw new Error("Account could not be verified right now. Check the details and try again.")
+      }
+
       setErrors((current) => ({
         ...current,
         bankCode: undefined,
@@ -174,7 +157,7 @@ export function GeneralClinicSettingsSection() {
         accountName: "",
         bankAccountVerified: false,
       }))
-      toast.error(error instanceof Error ? error.message : "Unable to verify account.")
+      toast.error(getBankVerificationFailureMessage(error))
     } finally {
       setIsResolvingAccount(false)
     }
@@ -352,26 +335,26 @@ export function GeneralClinicSettingsSection() {
                 <Field data-invalid={Boolean(errors.bankCode) || undefined}>
                   <FieldLabel>Settlement bank</FieldLabel>
                   <FieldContent>
-                    <Select value={formState.bankCode} onValueChange={handleBankCodeChange}>
+                    <Select value={selectBankValue} onValueChange={handleBankCodeChange}>
                       <SelectTrigger className="w-full" aria-invalid={Boolean(errors.bankCode)}>
-                        <SelectValue
-                          placeholder={isLoadingBanks ? "Loading banks..." : "Select bank"}
-                        />
+                        <SelectValue placeholder="Select bank" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {bankOptions.length > 0 ? (
-                            bankOptions.map((bank) => (
-                              <SelectItem key={bank.code} value={bank.code}>
-                                {bank.name}
+                      <SelectContent position="popper" side="bottom" align="start" sideOffset={4}>
+                        <ScrollArea className="max-h-72">
+                          <SelectGroup>
+                            {bankOptions.length > 0 ? (
+                              bankOptions.map((bank) => (
+                                <SelectItem key={bank.code} value={bank.code}>
+                                  {bank.name}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="no-banks" disabled>
+                                No banks available
                               </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="no-banks" disabled>
-                              {isLoadingBanks ? "Loading banks..." : "No banks available"}
-                            </SelectItem>
-                          )}
-                        </SelectGroup>
+                            )}
+                          </SelectGroup>
+                        </ScrollArea>
                       </SelectContent>
                     </Select>
                     <FieldError>{errors.bankCode}</FieldError>

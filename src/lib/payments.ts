@@ -88,6 +88,26 @@ export interface MarketplaceBankListResponse {
   }>
 }
 
+export interface MarketplaceAccountResolveResponse {
+  success?: boolean
+  code?: string
+  message?: string
+  data?: {
+    bankDetails?: {
+      accountName?: string
+    }
+  }
+  bankDetails?: {
+    accountName?: string
+  }
+}
+
+export interface MarketplaceNinVerificationResponse {
+  nin_check?: {
+    status?: string
+  }
+}
+
 export function buildTxnRef(timestamp = Date.now()) {
   return `AM${String(timestamp).slice(-13)}`
 }
@@ -227,10 +247,40 @@ export function validateBankVerificationInput(input: BankVerificationInput) {
   return errors
 }
 
+export function getBankVerificationFailureMessage(error: unknown) {
+  const fallback = "Account could not be verified right now. Check the details and try again."
+
+  if (!(error instanceof Error)) {
+    return fallback
+  }
+
+  const normalizedMessage = error.message.trim()
+  if (!normalizedMessage) {
+    return fallback
+  }
+
+  const lowerCaseMessage = normalizedMessage.toLowerCase()
+  if (
+    lowerCaseMessage.includes("aborterror") ||
+    lowerCaseMessage.includes("called by client") ||
+    lowerCaseMessage.includes("timed out")
+  ) {
+    return fallback
+  }
+
+  return normalizedMessage
+}
+
+export function hasVerifiedBankAccountName(accountName: string) {
+  return accountName.trim().length > 0
+}
+
 export function extractMarketplaceBankOptions(
-  response: MarketplaceBankListResponse,
+  response: MarketplaceBankListResponse | Array<{ name?: string; code?: string }>,
 ): MarketplaceBankOption[] {
-  return (response.data ?? [])
+  const rawBanks = Array.isArray(response) ? response : (response.data ?? [])
+
+  return rawBanks
     .filter(
       (bank): bank is MarketplaceBankOption =>
         typeof bank?.name === "string" &&
@@ -243,4 +293,19 @@ export function extractMarketplaceBankOptions(
       code: bank.code.trim(),
     }))
     .sort((left, right) => left.name.localeCompare(right.name))
+}
+
+export function extractMarketplaceAccountName(response: MarketplaceAccountResolveResponse) {
+  return response.data?.bankDetails?.accountName?.trim() || response.bankDetails?.accountName?.trim() || ""
+}
+
+export function getMarketplaceNinVerificationResult(
+  response: MarketplaceNinVerificationResponse,
+) {
+  const status = response.nin_check?.status?.trim() || "UNKNOWN"
+
+  return {
+    isVerified: status === "EXACT_MATCH",
+    status,
+  }
 }

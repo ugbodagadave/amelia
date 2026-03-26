@@ -1,6 +1,6 @@
 import { startTransition, useDeferredValue, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { useAction, useMutation, useQuery } from "convex/react"
+import { useAction, useQuery } from "convex/react"
 import {
   IdentificationCardIcon,
   MagnifyingGlassIcon,
@@ -133,7 +133,7 @@ export function PatientsPage() {
   const navigate = useNavigate()
   const patients = useQuery(api.patients.list)
   const hmoTemplates = useQuery(api.patients.listHmoTemplates)
-  const createPatient = useMutation(api.patients.create)
+  const createPatient = useAction(api.patients.registerPatient)
   const extractHmoDetails = useAction(api.ocr.extractHmoDetails)
 
   const [searchTerm, setSearchTerm] = useState("")

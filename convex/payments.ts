@@ -27,14 +27,23 @@ import {
   normalizePhoneForSms,
   parseMetaMessageStatus,
   shouldAutoResendPaymentRequest,
-  extractMarketplaceBankOptions,
   validateBankVerificationInput,
+  getBankVerificationFailureMessage,
+  hasVerifiedBankAccountName,
   validatePaymentLinkToken,
 } from "../src/lib/payments"
+import { NIGERIAN_BANK_OPTIONS } from "../data/nigerian-banks"
 import { BILL_STATUS } from "../src/lib/billing"
 import { ROUTES } from "../src/constants/routes"
 import { NOTIFICATION_TYPE } from "../src/lib/notifications"
 import { inngest } from "./inngestClient"
+import {
+  fetchMarketplaceBankList,
+  fetchMarketplaceToken,
+  resolveMarketplaceBankAccount,
+  verifyMarketplaceNin,
+} from "./lib/marketplace"
+// Marketplace auth token generation still uses encodeBasicAuthCredentials in convex/lib/marketplace.ts.
 
 interface BillPaymentContext {
   _id: Id<"bills">
@@ -84,6 +93,7 @@ interface PaymentRequestSendResult {
 }
 
 type MetaLifecycleStatus = "sent" | "delivered" | "read" | "failed"
+const BANK_CACHE_STALE_AFTER_MS = 30 * 24 * 60 * 60 * 1000
 
 async function getCurrentClinicId(ctx: MutationCtx | QueryCtx) {
   const clerkUserId = await requireClerkUserId(ctx)
@@ -217,41 +227,6 @@ function buildPaymentSessionDetails(bill: {
   }
 }
 
-function encodeBasicAuthCredentials(clientId: string, clientSecret: string) {
-  const utf8Bytes = new TextEncoder().encode(`${clientId}:${clientSecret}`)
-  let binary = ""
-
-  for (const byte of utf8Bytes) {
-    binary += String.fromCharCode(byte)
-  }
-
-  return btoa(binary)
-}
-
-async function fetchMarketplaceToken() {
-  const clientId = requireEnv("ISW_MARKETPLACE_CLIENT_ID")
-  const clientSecret = requireEnv("ISW_MARKETPLACE_CLIENT_SECRET")
-  const credentials = encodeBasicAuthCredentials(clientId, clientSecret)
-
-  const response = await fetch(`${requireEnv("ISW_MARKETPLACE_BASE_URL")}/passport/oauth/token`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: "grant_type=client_credentials",
-  })
-
-  if (!response.ok) {
-    throw new ConvexError({
-      code: "MARKETPLACE_AUTH_FAILED",
-      message: "Unable to obtain Marketplace access token.",
-    })
-  }
-
-  return (await response.json()) as { access_token: string }
-}
-
 async function buildWebhookSignature(body: string, secret: string) {
   const encodedSecret = new TextEncoder().encode(secret)
   const key = await crypto.subtle.importKey(
@@ -367,31 +342,41 @@ export const getPublicPaymentByToken = query({
 
 export const listBanks = action({
   args: {},
-  handler: async (ctx) => {
-    await getCurrentClinicForAction(ctx)
-    const { access_token } = await fetchMarketplaceToken()
+  handler: async (ctx): Promise<Array<{ name: string; code: string }>> => {
+    await requireClerkUserId(ctx)
+    const cachedCatalog = (await ctx.runQuery(internal.payments.getMarketplaceBankCatalogState, {})) as {
+      banks: Array<{ name: string; code: string }>
+      lastUpdatedAt: number | null
+    }
+    const isCacheFresh =
+      cachedCatalog.banks.length > 0 &&
+      cachedCatalog.lastUpdatedAt !== null &&
+      Date.now() - cachedCatalog.lastUpdatedAt < BANK_CACHE_STALE_AFTER_MS
 
-    const response = await fetch(
-      "https://api-marketplace-routing.k8.isw.la/marketplace-routing/api/v1/verify/identity/account-number/bank-list",
-      {
-        headers: { Authorization: `Bearer ${access_token}` },
-      },
-    )
+    if (isCacheFresh) {
+      return cachedCatalog.banks
+    }
 
-    if (!response.ok) {
-      throw new ConvexError({
-        code: "BANK_LIST_FAILED",
-        message: "Unable to load the bank list from Interswitch Marketplace.",
+    try {
+      const { access_token } = await fetchMarketplaceToken()
+      const banks = await fetchMarketplaceBankList(access_token)
+
+      if (banks.length > 0) {
+        await ctx.runMutation(internal.payments.replaceMarketplaceBankCatalog, { banks })
+      }
+
+      return banks
+    } catch (error) {
+      if (cachedCatalog.banks.length > 0) {
+        return cachedCatalog.banks
+      }
+
+      await ctx.runMutation(internal.payments.replaceMarketplaceBankCatalog, {
+        banks: NIGERIAN_BANK_OPTIONS,
       })
-    }
 
-    const data = (await response.json()) as {
-      success?: boolean
-      code?: string
-      message?: string
-      data?: Array<{ name?: string; code?: string }>
+      return NIGERIAN_BANK_OPTIONS
     }
-    return extractMarketplaceBankOptions(data)
   },
 })
 
@@ -401,7 +386,7 @@ export const verifyBankAccount = action({
     bankCode: v.string(),
   },
   handler: async (ctx, args) => {
-    await getCurrentClinicForAction(ctx)
+    await requireClerkUserId(ctx)
     const fieldErrors = validateBankVerificationInput(args)
 
     if (Object.keys(fieldErrors).length > 0) {
@@ -412,37 +397,45 @@ export const verifyBankAccount = action({
       })
     }
 
-    const { access_token } = await fetchMarketplaceToken()
-    const response = await fetch(
-      "https://api-marketplace-routing.k8.isw.la/marketplace-routing/api/v1/verify/identity/account-number/resolve",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          accountNumber: args.accountNumber.trim(),
-          bankCode: args.bankCode.trim(),
-        }),
-      },
-    )
+    try {
+      const { access_token } = await fetchMarketplaceToken()
+      const data = await resolveMarketplaceBankAccount({
+        accessToken: access_token,
+        accountNumber: args.accountNumber,
+        bankCode: args.bankCode,
+      })
 
-    if (!response.ok) {
+      if (!hasVerifiedBankAccountName(data.accountName)) {
+        throw new ConvexError({
+          code: "BANK_RESOLVE_FAILED",
+          message: "Account could not be verified right now. Check the details and try again.",
+        })
+      }
+
+      return {
+        accountName: data.accountName,
+        bankName: data.bankName,
+        reference: data.reference,
+      }
+    } catch (error) {
+      if (error instanceof ConvexError) {
+        const code =
+          typeof error.data === "object" &&
+          error.data !== null &&
+          "code" in error.data &&
+          typeof error.data.code === "string"
+            ? error.data.code
+            : null
+
+        if (code === "VALIDATION_ERROR") {
+          throw error
+        }
+      }
+
       throw new ConvexError({
         code: "BANK_RESOLVE_FAILED",
-        message: "Unable to verify the clinic payout account.",
+        message: getBankVerificationFailureMessage(error),
       })
-    }
-
-    const data = (await response.json()) as {
-      bankDetails?: {
-        accountName?: string
-      }
-    }
-
-    return {
-      accountName: data.bankDetails?.accountName ?? "",
     }
   },
 })
@@ -455,26 +448,72 @@ export const verifyNIN = action({
   },
   handler: async (_, args) => {
     const { access_token } = await fetchMarketplaceToken()
-    const response = await fetch(
-      "https://api-marketplace-routing.k8.isw.la/marketplace-routing/api/v1/verify/identity/nin",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(args),
-      },
-    )
+    return await verifyMarketplaceNin({
+      accessToken: access_token,
+      firstName: args.firstName,
+      lastName: args.lastName,
+      nin: args.nin,
+    })
+  },
+})
 
-    if (!response.ok) {
-      throw new ConvexError({
-        code: "NIN_VERIFICATION_FAILED",
-        message: "Unable to verify the NIN with Interswitch Marketplace.",
+export const getMarketplaceBankCatalogState = internalQuery({
+  args: {},
+  returns: v.object({
+    banks: v.array(
+      v.object({
+        code: v.string(),
+        name: v.string(),
+      }),
+    ),
+    lastUpdatedAt: v.union(v.number(), v.null()),
+  }),
+  handler: async (ctx) => {
+    const banks = await ctx.db.query("marketplace_banks").collect()
+    const normalizedBanks = [...banks]
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((bank) => ({
+        code: bank.code,
+        name: bank.name,
+      }))
+
+    const lastUpdatedAt =
+      banks.length > 0
+        ? banks.reduce((latest, bank) => Math.max(latest, bank.updatedAt), banks[0].updatedAt)
+        : null
+
+    return {
+      banks: normalizedBanks,
+      lastUpdatedAt,
+    }
+  },
+})
+
+export const replaceMarketplaceBankCatalog = internalMutation({
+  args: {
+    banks: v.array(
+      v.object({
+        code: v.string(),
+        name: v.string(),
+      }),
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existingBanks = await ctx.db.query("marketplace_banks").collect()
+
+    await Promise.all(existingBanks.map((bank) => ctx.db.delete(bank._id)))
+
+    const updatedAt = Date.now()
+    for (const bank of args.banks) {
+      await ctx.db.insert("marketplace_banks", {
+        code: bank.code.trim(),
+        name: bank.name.trim(),
+        updatedAt,
       })
     }
 
-    return await response.json()
+    return null
   },
 })
 
