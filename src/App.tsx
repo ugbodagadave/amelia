@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { SignInPage } from "@/pages/SignIn"
 import { SignUpPage } from "@/pages/SignUp"
 import { ClinicOnboardingPage } from "@/pages/Onboarding"
@@ -14,6 +14,7 @@ import { BillDetailPage } from "@/pages/BillDetail"
 import { ClaimsPage } from "@/pages/Claims"
 import { AnalyticsPage } from "@/pages/Analytics"
 import { SettingsPage } from "@/pages/Settings"
+import { LandingPage } from "@/pages/Landing"
 import { NotFoundPage } from "@/pages/NotFound"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { DocumentTitleManager } from "@/components/brand/DocumentTitleManager"
@@ -61,7 +62,7 @@ function App() {
         <Route path={ROUTES.ANALYTICS} element={<ProtectedLayout><AnalyticsPage /></ProtectedLayout>} />
         <Route path={ROUTES.SETTINGS}  element={<ProtectedLayout><SettingsPage /></ProtectedLayout>} />
 
-        <Route path="/" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+        <Route path={ROUTES.LANDING} element={<LandingPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>

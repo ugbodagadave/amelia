@@ -163,6 +163,21 @@
   --notification-panel-width: 360px;
   --notification-panel-max-height: 440px;
   --notification-badge-min-size: 20px;
+
+  /* ─── Landing Page Tokens ──────────────────────────────────── */
+  --lp-surface:           #131312;
+  --lp-surface-low:       #1c1c1a;
+  --lp-surface-mid:       #20201e;
+  --lp-surface-lowest:    #0e0e0c;
+  --lp-surface-highest:   #353532;
+  --lp-surface-bright:    #3a3937;
+  --lp-primary:           #ffb86c;
+  --lp-primary-dim:       #d4882a;
+  --lp-on-primary:        #492900;
+  --lp-secondary:         #44ddc2;
+  --lp-on-surface:        #e5e2de;
+  --lp-on-surface-muted:  #d8c3b1;
+  --lp-outline:           #534436;
 }
 
 .dark {
@@ -268,6 +283,19 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-lp-surface: var(--lp-surface);
+  --color-lp-surface-low: var(--lp-surface-low);
+  --color-lp-surface-mid: var(--lp-surface-mid);
+  --color-lp-surface-lowest: var(--lp-surface-lowest);
+  --color-lp-surface-highest: var(--lp-surface-highest);
+  --color-lp-surface-bright: var(--lp-surface-bright);
+  --color-lp-primary: var(--lp-primary);
+  --color-lp-primary-dim: var(--lp-primary-dim);
+  --color-lp-on-primary: var(--lp-on-primary);
+  --color-lp-secondary: var(--lp-secondary);
+  --color-lp-on-surface: var(--lp-on-surface);
+  --color-lp-on-surface-muted: var(--lp-on-surface-muted);
+  --color-lp-outline: var(--lp-outline);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --font-serif: var(--font-serif);
@@ -303,4 +331,13 @@
   #root {
     min-height: 100vh;
   }
+}
+
+/* ─── Landing Page Utilities ───────────────────────────────── */
+.lp-amber-glow {
+  background: radial-gradient(circle at 50% 50%, rgba(212, 136, 42, 0.08) 0%, rgba(19, 19, 18, 0) 70%);
+}
+.lp-glass-panel {
+  background: rgba(53, 53, 50, 0.6);
+  backdrop-filter: blur(20px);
 }
