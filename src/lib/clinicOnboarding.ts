@@ -33,6 +33,19 @@ export interface ClinicOnboardingInput {
   bankAccountVerified: boolean
 }
 
+export interface ClinicSettingsSource {
+  name: string
+  address: string
+  nhiaFacilityCode: string
+  phone: string
+  email: string
+  medicalDirectorName: string
+  bankCode: string
+  bankName: string
+  accountNumber: string
+  accountName: string
+}
+
 export interface SeededServiceCatalogItem {
   name: string
   category: ServiceCatalogCategory
@@ -48,6 +61,18 @@ export interface SeededHmoTemplate {
   hmoName: string
   additionalFields: SeededAdditionalField[]
   formLayoutConfig: string
+  aliases?: string[]
+  website?: string
+  contactEmail?: string
+  contactPhone?: string
+  address?: string
+  sourceUrls?: string[]
+  directorySourceType?: string
+  directoryConfidence?: string
+  directoryUpdatedAt?: number
+  tpaName?: string
+  tpaEmail?: string
+  tpaPhone?: string
 }
 
 export const SERVICE_CATEGORY_OPTIONS: Array<{
@@ -100,6 +125,7 @@ export const DEFAULT_HMO_TEMPLATES: SeededHmoTemplate[] = [
       { label: "Force No.", fieldKey: "forceNumber" },
       { label: "AP No.", fieldKey: "authorizationPaperNumber" },
     ],
+    aliases: ["PHML", "Police Health Maintenance Limited"],
     formLayoutConfig: JSON.stringify({
       variant: "police_hmo",
       sections: ["patient", "episode", "investigations", "medications", "totals"],
@@ -108,6 +134,7 @@ export const DEFAULT_HMO_TEMPLATES: SeededHmoTemplate[] = [
   {
     hmoName: "AXA Mansard",
     additionalFields: [{ label: "Authorization No.", fieldKey: "authorizationNumber" }],
+    aliases: ["AXA Mansard Health", "AXA Mansard HMO"],
     formLayoutConfig: JSON.stringify({
       variant: "axa_mansard",
       sections: ["patient", "episode", "investigations", "medications", "totals"],
@@ -116,6 +143,7 @@ export const DEFAULT_HMO_TEMPLATES: SeededHmoTemplate[] = [
   {
     hmoName: "Hygeia HMO",
     additionalFields: [{ label: "Enrollee ID", fieldKey: "enrolleeId" }],
+    aliases: ["Hygeia", "Hygeia HMO Limited"],
     formLayoutConfig: JSON.stringify({
       variant: "hygeia_hmo",
       sections: ["patient", "episode", "investigations", "medications", "totals"],
@@ -144,6 +172,64 @@ const PHONE_PATTERN = /^\+?234\d{10}$|^0\d{10}$/
 
 function normalizeSeedKey(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "")
+}
+
+function mergeDistinctValues(
+  existingValues: string[] | undefined,
+  incomingValues: string[] | undefined,
+) {
+  if (!existingValues?.length && !incomingValues?.length) {
+    return undefined
+  }
+
+  const merged = [...(existingValues ?? []), ...(incomingValues ?? [])]
+  const seen = new Set<string>()
+  const deduped: string[] = []
+
+  for (const value of merged) {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      continue
+    }
+
+    const key = normalizeSeedKey(trimmed)
+    if (seen.has(key)) {
+      continue
+    }
+
+    seen.add(key)
+    deduped.push(trimmed)
+  }
+
+  return deduped.length ? deduped : undefined
+}
+
+function mergeTemplateMetadata(
+  existingTemplate: SeededHmoTemplate,
+  incomingTemplate: SeededHmoTemplate,
+): SeededHmoTemplate {
+  return {
+    ...incomingTemplate,
+    ...existingTemplate,
+    additionalFields: existingTemplate.additionalFields.length
+      ? existingTemplate.additionalFields
+      : incomingTemplate.additionalFields,
+    aliases: mergeDistinctValues(existingTemplate.aliases, incomingTemplate.aliases),
+    sourceUrls: mergeDistinctValues(existingTemplate.sourceUrls, incomingTemplate.sourceUrls),
+    website: existingTemplate.website || incomingTemplate.website,
+    contactEmail: existingTemplate.contactEmail || incomingTemplate.contactEmail,
+    contactPhone: existingTemplate.contactPhone || incomingTemplate.contactPhone,
+    address: existingTemplate.address || incomingTemplate.address,
+    tpaName: existingTemplate.tpaName || incomingTemplate.tpaName,
+    tpaEmail: existingTemplate.tpaEmail || incomingTemplate.tpaEmail,
+    tpaPhone: existingTemplate.tpaPhone || incomingTemplate.tpaPhone,
+    directorySourceType:
+      existingTemplate.directorySourceType || incomingTemplate.directorySourceType,
+    directoryConfidence:
+      existingTemplate.directoryConfidence || incomingTemplate.directoryConfidence,
+    directoryUpdatedAt:
+      existingTemplate.directoryUpdatedAt || incomingTemplate.directoryUpdatedAt,
+  }
 }
 
 function sanitizePriceInput(value: string) {
@@ -212,6 +298,37 @@ export function validateClinicOnboardingInput(
   return errors
 }
 
+export function buildClinicSettingsFormState(
+  clinic: ClinicSettingsSource,
+): ClinicOnboardingInput {
+  return {
+    name: clinic.name,
+    address: clinic.address,
+    nhiaFacilityCode: clinic.nhiaFacilityCode,
+    phone: clinic.phone,
+    email: clinic.email,
+    medicalDirectorName: clinic.medicalDirectorName,
+    bankCode: clinic.bankCode,
+    bankName: clinic.bankName,
+    accountNumber: clinic.accountNumber,
+    accountName: clinic.accountName,
+    bankAccountVerified: Boolean(
+      clinic.bankCode.trim() && clinic.accountNumber.trim() && clinic.accountName.trim(),
+    ),
+  }
+}
+
+export function haveClinicBankDetailsChanged(
+  previous: Pick<ClinicOnboardingInput, "accountName" | "accountNumber" | "bankCode">,
+  next: Pick<ClinicOnboardingInput, "accountName" | "accountNumber" | "bankCode">,
+) {
+  return (
+    previous.bankCode.trim() !== next.bankCode.trim() ||
+    previous.accountNumber.trim() !== next.accountNumber.trim() ||
+    previous.accountName.trim() !== next.accountName.trim()
+  )
+}
+
 export function mergeSeededServiceCatalog(
   existingServices: SeededServiceCatalogItem[],
 ) {
@@ -240,9 +357,8 @@ export function mergeSeededHmoTemplates(existingTemplates: SeededHmoTemplate[]) 
 
   for (const template of DEFAULT_HMO_TEMPLATES) {
     const key = normalizeSeedKey(template.hmoName)
-    if (!merged.has(key)) {
-      merged.set(key, template)
-    }
+    const existingTemplate = merged.get(key)
+    merged.set(key, existingTemplate ? mergeTemplateMetadata(existingTemplate, template) : template)
   }
 
   return Array.from(merged.values())

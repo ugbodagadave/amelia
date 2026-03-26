@@ -251,8 +251,18 @@ export default defineSchema({
   hmo_templates: defineTable({
     clinicId: v.id("clinics"),
     hmoName: v.string(),
+    aliases: v.optional(v.array(v.string())),
     tpaName: v.optional(v.string()),
     tpaEmail: v.optional(v.string()),
+    tpaPhone: v.optional(v.string()),
+    website: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    address: v.optional(v.string()),
+    sourceUrls: v.optional(v.array(v.string())),
+    directorySourceType: v.optional(v.string()),
+    directoryConfidence: v.optional(v.string()),
+    directoryUpdatedAt: v.optional(v.number()),
     additionalFields: v.array(
       v.object({
         label: v.string(),

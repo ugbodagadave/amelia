@@ -58,7 +58,7 @@ const ONBOARDING_HIGHLIGHTS = [
   },
   {
     title: "Claims readiness",
-    description: "Default HMO templates are seeded upfront so Phase 2 and beyond can reuse the same clinic workspace.",
+    description: "Default HMO templates are added during setup.",
     icon: FileTextIcon,
   },
 ] as const

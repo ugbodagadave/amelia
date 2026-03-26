@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "firecrawl:smoke": "bun run scripts/firecrawl-smoke.ts",
+    "hmo:directory:bootstrap": "bun run scripts/bootstrap-hmo-directory.ts",
+    "hmo:directory:scrape": "bun run scripts/scrape-hmo-directory.ts",
+    "hmo:directory:seed": "bun run scripts/seed-hmo-directory.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",

@@ -130,9 +130,6 @@ export function PatientProfilePage() {
           <Card>
             <CardHeader>
               <CardTitle className="font-mono text-base">Insurance metadata</CardTitle>
-              <CardDescription>
-                Dynamic HMO identifiers captured during registration stay with the patient record.
-              </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               {patient.hmoAdditionalFields?.length ? (
@@ -150,9 +147,6 @@ export function PatientProfilePage() {
           <Card>
             <CardHeader>
               <CardTitle className="font-mono text-base">Bill history</CardTitle>
-              <CardDescription>
-                This tab becomes the handoff point into the Phase 3 bill builder.
-              </CardDescription>
             </CardHeader>
             <CardContent>
               {patient.billHistory.length ? (
@@ -193,9 +187,7 @@ export function PatientProfilePage() {
                       <UserCircleIcon />
                     </EmptyMedia>
                     <EmptyTitle>No bills yet</EmptyTitle>
-                    <EmptyDescription>
-                      Billing unlocks in Phase 3. This profile is ready to receive its first bill.
-                    </EmptyDescription>
+                    <EmptyDescription>Create the first bill for this patient.</EmptyDescription>
                   </EmptyHeader>
                   <EmptyContent>
                     <Button asChild>

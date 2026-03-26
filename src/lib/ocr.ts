@@ -20,6 +20,7 @@ export type SupportedOcrMediaType = (typeof SUPPORTED_OCR_MEDIA_TYPES)[number]
 
 export interface HmoTemplateLike {
   hmoName: string
+  aliases?: string[]
   additionalFields: Array<{
     fieldKey: string
     label: string
@@ -195,19 +196,23 @@ export function matchHmoTemplateName(
 
   return (
     templates.find((template) => {
-      const normalizedTemplateName = normalizeHmoTemplateName(template.hmoName)
-      const templateTokens = tokenizeHmoName(template.hmoName)
-      const sharedTokenCount = templateTokens.filter((token) =>
-        extractedTokens.includes(token),
-      ).length
+      const searchCandidates = [template.hmoName, ...(template.aliases ?? [])]
 
-      return (
-        normalizedTemplateName === normalizedExtractedName ||
-        normalizedTemplateName.includes(normalizedExtractedName) ||
-        normalizedExtractedName.includes(normalizedTemplateName) ||
-        (sharedTokenCount > 0 &&
-          Math.max(templateTokens.length, extractedTokens.length) - sharedTokenCount <= 1)
-      )
+      return searchCandidates.some((candidate) => {
+        const normalizedTemplateName = normalizeHmoTemplateName(candidate)
+        const templateTokens = tokenizeHmoName(candidate)
+        const sharedTokenCount = templateTokens.filter((token) =>
+          extractedTokens.includes(token),
+        ).length
+
+        return (
+          normalizedTemplateName === normalizedExtractedName ||
+          normalizedTemplateName.includes(normalizedExtractedName) ||
+          normalizedExtractedName.includes(normalizedTemplateName) ||
+          (sharedTokenCount > 0 &&
+            Math.max(templateTokens.length, extractedTokens.length) - sharedTokenCount <= 1)
+        )
+      })
     }) ?? null
   )
 }

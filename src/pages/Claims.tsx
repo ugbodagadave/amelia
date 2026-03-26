@@ -673,11 +673,6 @@ export function ClaimsPage() {
               </Button>
             </div>
 
-            <p className="text-sm text-muted-foreground">
-              Scores combine hard validation checks with advisory AI warnings when Groq scoring is
-              available. A high score can still include non-blocking suggestions.
-            </p>
-
             {isGenerating ? (
               <div className="grid gap-3 border p-4">
                 <Progress value={(generationStep / CLAIM_PROGRESS_STEPS.length) * 100} />

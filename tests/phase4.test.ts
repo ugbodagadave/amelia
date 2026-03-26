@@ -253,6 +253,8 @@ describe("Phase 4 - Routing and source integration", () => {
     expect(paymentsSource).toContain("const hasProviderReference = Boolean(args.payRef?.trim())")
     expect(paymentsSource).toContain("responseCodeMissingButPaid")
     expect(paymentsSource).toContain("const transactionReference = buildTxnRef()")
+    expect(paymentsSource).toContain("encodeBasicAuthCredentials")
+    expect(paymentsSource).not.toContain("Buffer.from")
     expect(paymentsSource).toContain('merchant_code')
     expect(paymentsSource).toContain('pay_item_id')
     expect(paymentsSource).toContain('txn_ref')

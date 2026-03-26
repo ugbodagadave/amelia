@@ -175,7 +175,7 @@ export function HmoDocumentOcrCard({
               <AlertTitle>OCR extracted details</AlertTitle>
               <AlertDescription>
                 Processed {result.audit.pagesProcessed} page
-                {result.audit.pagesProcessed === 1 ? "" : "s"} with Mistral OCR.
+                {result.audit.pagesProcessed === 1 ? "" : "s"}.
               </AlertDescription>
             </Alert>
 

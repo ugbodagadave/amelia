@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test"
 import { ROUTES } from "../src/constants/routes"
 import {
+  buildClinicSettingsFormState,
   CLINIC_ONBOARDING_REQUIRED_FIELDS,
   DEFAULT_HMO_TEMPLATES,
   DEFAULT_SERVICE_CATALOG,
   formatPriceInput,
+  haveClinicBankDetailsChanged,
   mergeSeededHmoTemplates,
   mergeSeededServiceCatalog,
   parsePriceInput,
@@ -65,6 +67,67 @@ describe("Phase 1 — Clinic onboarding validation", () => {
     })
 
     expect(result).toEqual({})
+  })
+
+  test("builds editable clinic settings form state from a saved clinic profile", () => {
+    expect(
+      buildClinicSettingsFormState({
+        name: "Apex Clinic",
+        address: "12 Marina, Lagos",
+        nhiaFacilityCode: "NHIA-1029",
+        phone: "+2348012345678",
+        email: "hello@clinic.test",
+        medicalDirectorName: "Dr. A. Bello",
+        bankCode: "058",
+        bankName: "GTBank",
+        accountNumber: "0123456789",
+        accountName: "APEX CLINIC",
+      }),
+    ).toEqual({
+      name: "Apex Clinic",
+      address: "12 Marina, Lagos",
+      nhiaFacilityCode: "NHIA-1029",
+      phone: "+2348012345678",
+      email: "hello@clinic.test",
+      medicalDirectorName: "Dr. A. Bello",
+      bankCode: "058",
+      bankName: "GTBank",
+      accountNumber: "0123456789",
+      accountName: "APEX CLINIC",
+      bankAccountVerified: true,
+    })
+  })
+
+  test("detects when bank details have changed and require re-verification", () => {
+    expect(
+      haveClinicBankDetailsChanged(
+        {
+          bankCode: "058",
+          accountNumber: "0123456789",
+          accountName: "APEX CLINIC",
+        },
+        {
+          bankCode: "058",
+          accountNumber: "0123456789",
+          accountName: "APEX CLINIC",
+        },
+      ),
+    ).toBe(false)
+
+    expect(
+      haveClinicBankDetailsChanged(
+        {
+          bankCode: "058",
+          accountNumber: "0123456789",
+          accountName: "APEX CLINIC",
+        },
+        {
+          bankCode: "033",
+          accountNumber: "0123456789",
+          accountName: "APEX CLINIC",
+        },
+      ),
+    ).toBe(true)
   })
 })
 
@@ -151,11 +214,18 @@ describe("Phase 1 — App routing and docs", () => {
     expect(layoutSource).toContain("pt-4")
   })
 
-  test("settings uses a dialog modal for add service instead of a sheet", async () => {
-    const settingsSource = await Bun.file("./src/pages/Settings.tsx").text()
+  test("settings is routed through a tab shell and the services section still uses a dialog", async () => {
+    const [settingsSource, shellSource, servicesSource] = await Promise.all([
+      Bun.file("./src/pages/Settings.tsx").text(),
+      Bun.file("./src/components/settings/SettingsTabsShell.tsx").text(),
+      Bun.file("./src/components/settings/ServiceCatalogSettingsSection.tsx").text(),
+    ])
 
-    expect(settingsSource).toContain("Dialog")
-    expect(settingsSource).not.toContain("SheetContent")
-    expect(settingsSource).not.toContain("isSheetOpen")
+    expect(settingsSource).toContain("SettingsTabsShell")
+    expect(shellSource).toContain("TabsTrigger")
+    expect(shellSource).toContain("General Settings")
+    expect(servicesSource).toContain("Dialog")
+    expect(servicesSource).not.toContain("SheetContent")
+    expect(servicesSource).not.toContain("isSheetOpen")
   })
 })

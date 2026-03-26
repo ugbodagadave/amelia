@@ -216,10 +216,21 @@ function buildPaymentSessionDetails(bill: {
   }
 }
 
+function encodeBasicAuthCredentials(clientId: string, clientSecret: string) {
+  const utf8Bytes = new TextEncoder().encode(`${clientId}:${clientSecret}`)
+  let binary = ""
+
+  for (const byte of utf8Bytes) {
+    binary += String.fromCharCode(byte)
+  }
+
+  return btoa(binary)
+}
+
 async function fetchMarketplaceToken() {
   const clientId = requireEnv("ISW_MARKETPLACE_CLIENT_ID")
   const clientSecret = requireEnv("ISW_MARKETPLACE_CLIENT_SECRET")
-  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64")
+  const credentials = encodeBasicAuthCredentials(clientId, clientSecret)
 
   const response = await fetch(`${requireEnv("ISW_MARKETPLACE_BASE_URL")}/passport/oauth/token`, {
     method: "POST",
