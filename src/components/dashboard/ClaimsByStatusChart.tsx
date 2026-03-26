@@ -1,4 +1,4 @@
-import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, LabelList, XAxis } from "recharts"
 import {
   Card,
   CardContent,
@@ -8,8 +8,6 @@ import {
 } from "@/components/ui/card"
 import {
   ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
@@ -25,22 +23,19 @@ interface ClaimsByStatusChartProps {
   data: ClaimStatusData[] | undefined
 }
 
+const STATUS_ORDER = ["draft", "submitted", "paid", "overdue"] as const
+
+const STATUS_LABELS: Record<string, string> = {
+  draft: "Draft",
+  submitted: "Submitted",
+  paid: "Paid",
+  overdue: "Overdue",
+}
+
 const chartConfig = {
-  draft: {
-    label: "Draft",
-    color: "var(--chart-3)",
-  },
-  submitted: {
-    label: "Submitted",
-    color: "var(--chart-2)",
-  },
-  paid: {
-    label: "Paid",
+  count: {
+    label: "Claims",
     color: "var(--chart-1)",
-  },
-  overdue: {
-    label: "Overdue",
-    color: "var(--destructive)",
   },
 } satisfies ChartConfig
 
@@ -59,15 +54,27 @@ export function ClaimsByStatusChart({ data }: ClaimsByStatusChartProps) {
     )
   }
 
-  // Pivot [{status, count}] into a single stacked-bar row
-  const chartData = [
-    Object.fromEntries([
-      ["period", "Claims"],
-      ...data.map((d) => [d.status, d.count]),
-    ]),
-  ]
-
   const total = data.reduce((sum, d) => sum + d.count, 0)
+
+  const chartData = STATUS_ORDER.map((s) => {
+    const found = data.find((d) => d.status === s)
+    return {
+      status: STATUS_LABELS[s] ?? s,
+      count: found?.count ?? 0,
+      fill: `var(--chart-${s === "overdue" ? "destructive" : s === "draft" ? "3" : s === "submitted" ? "2" : "1"})`,
+    }
+  })
+
+  // Map overdue to destructive, others to chart variables
+  const coloredData = chartData.map((d, i) => {
+    const fills = [
+      "var(--chart-3)", // draft
+      "var(--chart-2)", // submitted
+      "var(--chart-1)", // paid
+      "var(--destructive)", // overdue
+    ]
+    return { ...d, fill: fills[i] }
+  })
 
   return (
     <Card>
@@ -81,21 +88,27 @@ export function ClaimsByStatusChart({ data }: ClaimsByStatusChartProps) {
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[200px] w-full">
-          <BarChart accessibilityLayer data={chartData}>
+          <BarChart accessibilityLayer data={coloredData} margin={{ top: 20 }}>
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="period"
+              dataKey="status"
               tickLine={false}
               tickMargin={10}
               axisLine={false}
               className="font-mono text-xs"
             />
-            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-            <ChartLegend content={<ChartLegendContent />} />
-            <Bar dataKey="draft" stackId="a" fill="var(--color-draft)" radius={[0, 0, 2, 2]} />
-            <Bar dataKey="submitted" stackId="a" fill="var(--color-submitted)" radius={[0, 0, 0, 0]} />
-            <Bar dataKey="paid" stackId="a" fill="var(--color-paid)" radius={[0, 0, 0, 0]} />
-            <Bar dataKey="overdue" stackId="a" fill="var(--color-overdue)" radius={[2, 2, 0, 0]} />
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent hideLabel />}
+            />
+            <Bar dataKey="count" radius={4} isAnimationActive={false}>
+              <LabelList
+                position="top"
+                offset={8}
+                className="fill-muted-foreground font-mono text-xs"
+                formatter={(value: number) => (value === 0 ? "" : value)}
+              />
+            </Bar>
           </BarChart>
         </ChartContainer>
       </CardContent>

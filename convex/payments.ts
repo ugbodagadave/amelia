@@ -31,6 +31,8 @@ import {
   validatePaymentLinkToken,
 } from "../src/lib/payments"
 import { BILL_STATUS } from "../src/lib/billing"
+import { ROUTES } from "../src/constants/routes"
+import { NOTIFICATION_TYPE } from "../src/lib/notifications"
 import { inngest } from "./inngestClient"
 
 interface BillPaymentContext {
@@ -697,13 +699,19 @@ export const markBillPaid = internalMutation({
     billId: v.id("bills"),
     paymentChannel: v.optional(v.union(v.literal("card"), v.literal("opay"))),
     transactionReference: v.optional(v.string()),
-    providerPaymentReference: v.optional(v.string()),
-    interswitchRef: v.optional(v.string()),
-    paidAmount: v.optional(v.number()),
-  },
-  returns: v.object({ alreadyPaid: v.boolean(), patientPhone: v.string(), clinicName: v.string(), totalAmount: v.number() }),
-  handler: async (ctx, args) => {
-    const bill = await ctx.db.get(args.billId)
+  providerPaymentReference: v.optional(v.string()),
+  interswitchRef: v.optional(v.string()),
+  paidAmount: v.optional(v.number()),
+    },
+    returns: v.object({
+      alreadyPaid: v.boolean(),
+      patientName: v.string(),
+      patientPhone: v.string(),
+      clinicName: v.string(),
+      totalAmount: v.number(),
+    }),
+    handler: async (ctx, args) => {
+      const bill = await ctx.db.get(args.billId)
 
     if (!bill) {
       throw new ConvexError({
@@ -720,31 +728,46 @@ export const markBillPaid = internalMutation({
       })
     }
 
-    if (bill.status === BILL_STATUS.PAID || bill.status === BILL_STATUS.CLAIMED) {
+      if (bill.status === BILL_STATUS.PAID || bill.status === BILL_STATUS.CLAIMED) {
+        return {
+          alreadyPaid: true,
+          patientName: `${patient.surname} ${patient.otherNames}`.trim(),
+          patientPhone: patient.phone,
+          clinicName: clinic.name,
+          totalAmount: bill.totalAmount,
+        }
+      }
+
+      const paidAt = Date.now()
+      await ctx.db.patch(args.billId, {
+        status: BILL_STATUS.PAID,
+        paidAt,
+        paymentChannel: args.paymentChannel ?? bill.paymentChannel,
+        transactionReference: args.transactionReference ?? bill.transactionReference,
+        providerPaymentReference: args.providerPaymentReference ?? bill.providerPaymentReference,
+        interswitchRef: args.interswitchRef ?? bill.interswitchRef,
+        paidAmount: args.paidAmount ?? bill.totalAmount,
+        paymentRequestAutoResendAt: undefined,
+      })
+
+      await ctx.runMutation(internal.notifications.createNotification, {
+        clinicId: clinic._id,
+        recipientClerkUserId: clinic.createdByClerkUserId,
+        type: NOTIFICATION_TYPE.PAYMENT_CONFIRMED,
+        title: "Payment confirmed",
+        description: `${`${patient.surname} ${patient.otherNames}`.trim()} completed bill payment.`,
+        route: `${ROUTES.BILLS}/${bill._id}`,
+        entityId: bill._id,
+        entityLabel: `${patient.surname} ${patient.otherNames}`.trim(),
+        createdAt: paidAt,
+      })
+
       return {
-        alreadyPaid: true,
+        alreadyPaid: false,
+        patientName: `${patient.surname} ${patient.otherNames}`.trim(),
         patientPhone: patient.phone,
         clinicName: clinic.name,
         totalAmount: bill.totalAmount,
-      }
-    }
-
-    await ctx.db.patch(args.billId, {
-      status: BILL_STATUS.PAID,
-      paidAt: Date.now(),
-      paymentChannel: args.paymentChannel ?? bill.paymentChannel,
-      transactionReference: args.transactionReference ?? bill.transactionReference,
-      providerPaymentReference: args.providerPaymentReference ?? bill.providerPaymentReference,
-      interswitchRef: args.interswitchRef ?? bill.interswitchRef,
-      paidAmount: args.paidAmount ?? bill.totalAmount,
-      paymentRequestAutoResendAt: undefined,
-    })
-
-    return {
-      alreadyPaid: false,
-      patientPhone: patient.phone,
-      clinicName: clinic.name,
-      totalAmount: bill.totalAmount,
     }
   },
 })
@@ -1180,6 +1203,21 @@ export const persistPaymentRequestSendSuccess = internalMutation({
       )
     }
 
+    const [patient, clinic] = await Promise.all([ctx.db.get(bill.patientId), ctx.db.get(bill.clinicId)])
+    if (patient && clinic) {
+      await ctx.runMutation(internal.notifications.createNotification, {
+        clinicId: clinic._id,
+        recipientClerkUserId: clinic.createdByClerkUserId,
+        type: NOTIFICATION_TYPE.PAYMENT_REQUEST_SENT,
+        title: args.isAutoResend ? "Payment reminder sent" : "Payment request sent",
+        description: `Payment request was sent to ${`${patient.surname} ${patient.otherNames}`.trim()}.`,
+        route: `${ROUTES.BILLS}/${bill._id}`,
+        entityId: bill._id,
+        entityLabel: `${patient.surname} ${patient.otherNames}`.trim(),
+        createdAt: args.attemptedAt,
+      })
+    }
+
     return null
   },
 })
@@ -1205,6 +1243,21 @@ export const persistPaymentRequestSendFailure = internalMutation({
       paymentRequestAttemptCount: (bill.paymentRequestAttemptCount ?? 0) + 1,
       paymentRequestAutoResendAt: undefined,
     })
+
+    const [patient, clinic] = await Promise.all([ctx.db.get(bill.patientId), ctx.db.get(bill.clinicId)])
+    if (patient && clinic) {
+      await ctx.runMutation(internal.notifications.createNotification, {
+        clinicId: clinic._id,
+        recipientClerkUserId: clinic.createdByClerkUserId,
+        type: NOTIFICATION_TYPE.PAYMENT_REQUEST_FAILED,
+        title: "Payment request failed",
+        description: `Payment request to ${`${patient.surname} ${patient.otherNames}`.trim()} failed.`,
+        route: `${ROUTES.BILLS}/${bill._id}`,
+        entityId: bill._id,
+        entityLabel: `${patient.surname} ${patient.otherNames}`.trim(),
+        createdAt: args.attemptedAt,
+      })
+    }
 
     return null
   },

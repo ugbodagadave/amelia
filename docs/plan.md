@@ -67,6 +67,9 @@ Before any code is written, confirm the following are in place:
 - Sidebar: logo, nav items with active state, user card at bottom
 - Topbar: page title, search input, notification bell, dark mode toggle
 - All navigation wired with React Router, no page content yet
+- Brand assets now live in `public/brand/`, with the full Amelia logo in the expanded sidebar and the logo mark in collapsed/mobile brand slots
+- Browser title now reflects the current route (`Amelia | Page`) while public/auth surfaces use the descriptive `Amelia - ...` format
+- Browser favicon now uses the Amelia logo mark SVG
 
 **Tests for Phase 0:** ✅ 22 tests across 3 files — all passing (`bun test`)
 - ✅ Clerk auth flow: unauthenticated user redirected to sign-in
@@ -462,6 +465,7 @@ All stats from a single reactive Convex query `getDashboardStats(clinicId, date)
 - Collection Rate (paid / total billed %)
 - Claims Submitted (count + value)
 - Average Days to Payment
+- Post-phase UI polish: overview/outstanding tabs now use a boxed active state for clearer page context
 
 **30-Day Revenue Trend:**
 - Line chart, one data point per day
@@ -478,6 +482,12 @@ All stats from a single reactive Convex query `getDashboardStats(clinicId, date)
 - Full list of unpaid bills with: patient name, amount, days outstanding, HMO name
 - "Resend SMS" button per row → triggers Inngest `bill.paymentLinkSent` again
 - Sort by: amount (desc), days outstanding (desc)
+- Empty list now uses the shared empty-state component instead of plain helper text
+
+### 6.4 Layout Polish
+- Desktop sidebar toggle now uses a fixed-width sidebar again, with no drag-resize persistence
+- Removed the synthetic resize bridge to keep sidebar toggle interaction lighter
+- Chart resizing now uses debounced responsive measurement and disabled series animation instead of remounting chart trees on sidebar toggle
 
 **Tests for Phase 6:**
 - Dashboard stats: `todayCollections` is zero when no bills paid today
@@ -660,6 +670,8 @@ Additional rules:
 - **Convex conventions** — mutations for writes, queries for reads, actions for side effects (external API calls)
 - **One feature at a time** — no phase starts until the previous phase's tests pass
 - **Test alongside** — tests are written in the same session as the feature, not deferred
+- ✅ Dashboard hero now greets the signed-in clinic by name instead of repeating the page title
+- ✅ Header bell now opens a persistent cross-app notifications feed with unread state and deep links
 
 ---
 

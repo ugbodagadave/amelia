@@ -14,10 +14,10 @@ interface StatCardProps {
 }
 
 const variantBorder: Record<StatCardVariant, string> = {
-  revenue: "border-l-[3px] border-l-[var(--stat-accent-revenue)]",
-  warning: "border-l-[3px] border-l-[var(--stat-accent-warning)]",
-  critical: "border-l-[3px] border-l-[var(--stat-accent-critical)]",
-  neutral: "border-l-[3px] border-l-border",
+  revenue: "",
+  warning: "",
+  critical: "",
+  neutral: "",
 }
 
 export function StatCard({

@@ -81,3 +81,24 @@ describe("useDarkMode — persistence logic", () => {
     expect(readDarkModePreference()).toBe(false)
   })
 })
+
+test("AppLayout does not use a synthetic sidebar resize bridge", async () => {
+  const source = await Bun.file("./src/layouts/AppLayout.tsx").text()
+  expect(source).not.toContain("SidebarResizeBridge")
+  expect(source).not.toContain("requestAnimationFrame")
+  expect(source).not.toContain("window.dispatchEvent(new Event(\"resize\"))")
+})
+
+test("sidebar uses a fixed desktop width and no resize persistence", async () => {
+  const source = await Bun.file("./src/components/ui/sidebar.tsx").text()
+  expect(source).toContain('const SIDEBAR_WIDTH = "16rem"')
+  expect(source).not.toContain("SIDEBAR_WIDTH_STORAGE_KEY")
+  expect(source).not.toContain("sidebarWidthPx")
+  expect(source).not.toContain("localStorage.setItem")
+})
+
+test("ChartContainer debounces responsive resize work", async () => {
+  const source = await Bun.file("./src/components/ui/chart.tsx").text()
+  expect(source).toContain("const CHART_RESIZE_DEBOUNCE_MS = 120")
+  expect(source).toContain("debounce={CHART_RESIZE_DEBOUNCE_MS}")
+})

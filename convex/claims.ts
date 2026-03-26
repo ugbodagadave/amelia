@@ -6,6 +6,8 @@ import { action, internalMutation, internalQuery, mutation, query } from "./_gen
 import { BILL_STATUS } from "../src/lib/billing"
 import { CLAIM_BATCH_STATUS, CLAIM_SCORE_BAND, addDays } from "../src/lib/claims"
 import { buildPatientFullName } from "../src/lib/patients"
+import { ROUTES } from "../src/constants/routes"
+import { NOTIFICATION_TYPE } from "../src/lib/notifications"
 import {
   getClaimRecordForBill as loadSingleClaimRecord,
   getCurrentClinicForAction,
@@ -112,6 +114,7 @@ export const createGeneratedClaimBatch = internalMutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now()
+    const clinic = await ctx.db.get(args.clinicId)
     const claimBatchId = await ctx.db.insert("claim_batches", {
       clinicId: args.clinicId,
       hmoName: args.hmoName,
@@ -150,6 +153,20 @@ export const createGeneratedClaimBatch = internalMutation({
       })
     }
 
+    if (clinic) {
+      await ctx.runMutation(internal.notifications.createNotification, {
+        clinicId: args.clinicId,
+        recipientClerkUserId: clinic.createdByClerkUserId,
+        type: NOTIFICATION_TYPE.CLAIM_BATCH_GENERATED,
+        title: "Claim batch generated",
+        description: `${args.hmoName} claim batch is ready for review and submission.`,
+        route: ROUTES.CLAIMS,
+        entityId: claimBatchId,
+        entityLabel: args.hmoName,
+        createdAt: now,
+      })
+    }
+
     return claimBatchId
   },
 })
@@ -162,9 +179,24 @@ export const markBatchOverdueInternal = internalMutation({
       return null
     }
 
+    const clinic = await ctx.db.get(batch.clinicId)
+
     await ctx.db.patch(args.claimBatchId, {
       status: CLAIM_BATCH_STATUS.OVERDUE,
     })
+
+    if (clinic) {
+      await ctx.runMutation(internal.notifications.createNotification, {
+        clinicId: batch.clinicId,
+        recipientClerkUserId: clinic.createdByClerkUserId,
+        type: NOTIFICATION_TYPE.CLAIM_BATCH_OVERDUE,
+        title: "Claim payment overdue",
+        description: `${batch.hmoName} payment via ${batch.tpaName} is now overdue.`,
+        route: ROUTES.CLAIMS,
+        entityId: batch._id,
+        entityLabel: batch.hmoName,
+      })
+    }
 
     return null
   },
@@ -206,6 +238,7 @@ export const getClaimBatch = query({
   args: { claimBatchId: v.id("claim_batches") },
   handler: async (ctx, args) => {
     const clinicId = await getCurrentClinicId(ctx)
+    const clinic = await ctx.db.get(clinicId)
     const batch = await ctx.db.get(args.claimBatchId)
 
     if (!batch || batch.clinicId !== clinicId) {
@@ -464,6 +497,7 @@ export const submitClaimBatch = mutation({
   },
   handler: async (ctx, args) => {
     const clinicId = await getCurrentClinicId(ctx)
+    const clinic = await ctx.db.get(clinicId)
     const batch = await ctx.db.get(args.claimBatchId)
 
     if (!batch || batch.clinicId !== clinicId) {
@@ -484,6 +518,20 @@ export const submitClaimBatch = mutation({
       status: CLAIM_BATCH_STATUS.SUBMITTED,
     })
 
+    if (clinic) {
+      await ctx.runMutation(internal.notifications.createNotification, {
+        clinicId,
+        recipientClerkUserId: clinic.createdByClerkUserId,
+        type: NOTIFICATION_TYPE.CLAIM_BATCH_SUBMITTED,
+        title: "Claim batch submitted",
+        description: `${batch.hmoName} claims were submitted to ${args.tpaName.trim()}.`,
+        route: ROUTES.CLAIMS,
+        entityId: batch._id,
+        entityLabel: batch.hmoName,
+        createdAt: submittedAt,
+      })
+    }
+
     return { submittedAt, expectedPaymentBy }
   },
 })
@@ -492,6 +540,7 @@ export const markClaimBatchPaid = mutation({
   args: { claimBatchId: v.id("claim_batches") },
   handler: async (ctx, args) => {
     const clinicId = await getCurrentClinicId(ctx)
+    const clinic = await ctx.db.get(clinicId)
     const batch = await ctx.db.get(args.claimBatchId)
 
     if (!batch || batch.clinicId !== clinicId) {
@@ -506,6 +555,20 @@ export const markClaimBatchPaid = mutation({
       status: CLAIM_BATCH_STATUS.PAID,
       paidAt,
     })
+
+    if (clinic) {
+      await ctx.runMutation(internal.notifications.createNotification, {
+        clinicId,
+        recipientClerkUserId: clinic.createdByClerkUserId,
+        type: NOTIFICATION_TYPE.CLAIM_BATCH_PAID,
+        title: "Claim batch paid",
+        description: `${batch.hmoName} claim batch has been marked as paid.`,
+        route: ROUTES.CLAIMS,
+        entityId: batch._id,
+        entityLabel: batch.hmoName,
+        createdAt: paidAt,
+      })
+    }
 
     return { paidAt }
   },

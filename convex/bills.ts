@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values"
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server"
+import { internal } from "./_generated/api"
 import type { Doc, Id } from "./_generated/dataModel"
 import {
   BILL_STATUS,
@@ -10,9 +11,11 @@ import {
 } from "../src/lib/billing"
 import { PAYMENT_REQUEST_STATUS } from "../src/lib/payments"
 import { buildPatientFullName, maskNin } from "../src/lib/patients"
+import { ROUTES } from "../src/constants/routes"
+import { NOTIFICATION_TYPE } from "../src/lib/notifications"
 import { requireClerkUserId } from "./lib/auth"
 
-async function getCurrentClinicId(ctx: MutationCtx | QueryCtx) {
+async function getCurrentClinic(ctx: MutationCtx | QueryCtx) {
   const clerkUserId = await requireClerkUserId(ctx)
   const clinic = await ctx.db
     .query("clinics")
@@ -26,6 +29,11 @@ async function getCurrentClinicId(ctx: MutationCtx | QueryCtx) {
     })
   }
 
+  return { clinic, clerkUserId }
+}
+
+async function getCurrentClinicId(ctx: MutationCtx | QueryCtx) {
+  const { clinic } = await getCurrentClinic(ctx)
   return clinic._id
 }
 
@@ -211,7 +219,8 @@ export const create = mutation({
   },
   returns: v.id("bills"),
   handler: async (ctx, args) => {
-    const clinicId = await getCurrentClinicId(ctx)
+    const { clinic, clerkUserId } = await getCurrentClinic(ctx)
+    const clinicId = clinic._id
     const patient = await getPatientForClinic(ctx, clinicId, args.patientId)
     const fieldErrors = validateBillInput({
       patientId: args.patientId,
@@ -329,6 +338,19 @@ export const create = mutation({
       })
     }
 
+    const patientName = buildPatientFullName(patient.surname, patient.otherNames)
+    await ctx.runMutation(internal.notifications.createNotification, {
+      clinicId,
+      recipientClerkUserId: clerkUserId,
+      type: NOTIFICATION_TYPE.BILL_CREATED,
+      title: "Bill created",
+      description: `A new bill was created for ${patientName}.`,
+      route: `${ROUTES.BILLS}/${billId}`,
+      entityId: billId,
+      entityLabel: patientName,
+      createdAt,
+    })
+
     return billId
   },
 })
@@ -340,7 +362,8 @@ export const confirmAuthCode = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const clinicId = await getCurrentClinicId(ctx)
+    const { clinic, clerkUserId } = await getCurrentClinic(ctx)
+    const clinicId = clinic._id
     const bill = await ctx.db.get(args.billId)
 
     if (!bill || bill.clinicId !== clinicId) {
@@ -360,10 +383,23 @@ export const confirmAuthCode = mutation({
       })
     }
 
+    const updatedAt = Date.now()
     await ctx.db.patch(args.billId, {
       authorizationCode,
-      authCodeReceivedAt: Date.now(),
+      authCodeReceivedAt: updatedAt,
       status: BILL_STATUS.AUTH_CONFIRMED,
+    })
+
+    await ctx.runMutation(internal.notifications.createNotification, {
+      clinicId,
+      recipientClerkUserId: clerkUserId,
+      type: NOTIFICATION_TYPE.AUTH_CONFIRMED,
+      title: "Authorization confirmed",
+      description: `Authorization for bill ${args.billId} has been confirmed.`,
+      route: `${ROUTES.BILLS}/${args.billId}`,
+      entityId: args.billId,
+      entityLabel: authorizationCode,
+      createdAt: updatedAt,
     })
 
     return null
@@ -377,7 +413,8 @@ export const changeAuthCode = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const clinicId = await getCurrentClinicId(ctx)
+    const { clinic, clerkUserId } = await getCurrentClinic(ctx)
+    const clinicId = clinic._id
     const bill = await ctx.db.get(args.billId)
 
     if (!bill || bill.clinicId !== clinicId) {
@@ -397,10 +434,23 @@ export const changeAuthCode = mutation({
       })
     }
 
+    const updatedAt = Date.now()
     await ctx.db.patch(args.billId, {
       authorizationCode,
-      authCodeReceivedAt: Date.now(),
+      authCodeReceivedAt: updatedAt,
       status: BILL_STATUS.AUTH_CONFIRMED,
+    })
+
+    await ctx.runMutation(internal.notifications.createNotification, {
+      clinicId,
+      recipientClerkUserId: clerkUserId,
+      type: NOTIFICATION_TYPE.AUTH_CONFIRMED,
+      title: "Authorization confirmed",
+      description: `Authorization for bill ${args.billId} has been updated.`,
+      route: `${ROUTES.BILLS}/${args.billId}`,
+      entityId: args.billId,
+      entityLabel: authorizationCode,
+      createdAt: updatedAt,
     })
 
     return null

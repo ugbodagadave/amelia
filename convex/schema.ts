@@ -23,6 +23,19 @@ const claimScoreBandValidator = v.union(
   v.literal("red"),
 )
 
+const notificationTypeValidator = v.union(
+  v.literal("patient_created"),
+  v.literal("bill_created"),
+  v.literal("auth_confirmed"),
+  v.literal("payment_request_sent"),
+  v.literal("payment_request_failed"),
+  v.literal("payment_confirmed"),
+  v.literal("claim_batch_generated"),
+  v.literal("claim_batch_submitted"),
+  v.literal("claim_batch_paid"),
+  v.literal("claim_batch_overdue"),
+)
+
 const paymentChannelValidator = v.union(v.literal("card"), v.literal("opay"))
 const paymentRequestChannelValidator = v.union(v.literal("whatsapp"), v.literal("sms"))
 const paymentRequestStatusValidator = v.union(
@@ -267,4 +280,20 @@ export default defineSchema({
   })
     .index("by_claim_batch", ["claimBatchId"])
     .index("by_clinic_and_status", ["clinicId", "status"]),
+
+  notifications: defineTable({
+    clinicId: v.id("clinics"),
+    recipientClerkUserId: v.string(),
+    type: notificationTypeValidator,
+    title: v.string(),
+    description: v.string(),
+    route: v.string(),
+    entityId: v.optional(v.string()),
+    entityLabel: v.optional(v.string()),
+    isRead: v.boolean(),
+    readAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_recipient_and_created_at", ["recipientClerkUserId", "createdAt"])
+    .index("by_recipient_and_read_state", ["recipientClerkUserId", "isRead"]),
 })

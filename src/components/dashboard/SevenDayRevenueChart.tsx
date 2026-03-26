@@ -95,6 +95,7 @@ export function SevenDayRevenueChart({ data }: SevenDayRevenueChartProps) {
               stroke="var(--color-collections)"
               strokeWidth={2}
               dot={false}
+              isAnimationActive={false}
             />
             <Line
               dataKey="claimsSubmitted"
@@ -103,6 +104,7 @@ export function SevenDayRevenueChart({ data }: SevenDayRevenueChartProps) {
               strokeWidth={2}
               dot={false}
               strokeDasharray="4 3"
+              isAnimationActive={false}
             />
           </LineChart>
         </ChartContainer>

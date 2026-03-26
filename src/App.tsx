@@ -16,6 +16,7 @@ import { AnalyticsPage } from "@/pages/Analytics"
 import { SettingsPage } from "@/pages/Settings"
 import { NotFoundPage } from "@/pages/NotFound"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
+import { DocumentTitleManager } from "@/components/brand/DocumentTitleManager"
 import { AppLayout } from "@/layouts/AppLayout"
 import { ClinicGate } from "@/components/clinic/ClinicGate"
 import { ROUTES } from "@/constants/routes"
@@ -41,6 +42,7 @@ function ProtectedOnboardingRoute() {
 function App() {
   return (
     <BrowserRouter>
+      <DocumentTitleManager />
       <Routes>
         <Route path={ROUTES.SIGN_IN} element={<SignInPage />} />
         <Route path={ROUTES.SIGN_UP} element={<SignUpPage />} />

@@ -49,6 +49,7 @@ function buildAlerts(stats: DashboardStats): DashboardAlert[] {
 }
 
 export function DashboardPage() {
+  const clinic = useQuery(api.clinics.getCurrentClinic)
   const stats = useQuery(api.dashboard.getDashboardStats)
   const sevenDayRevenue = useQuery(api.dashboard.getSevenDayRevenue)
   const paymentMix = useQuery(api.dashboard.getPaymentMix)
@@ -56,13 +57,14 @@ export function DashboardPage() {
 
   const isLoading = stats === undefined
   const alerts = stats ? buildAlerts(stats) : []
+  const heroTitle = clinic?.name ? `Welcome, ${clinic.name}` : "Welcome"
 
   return (
     <div className="flex flex-col gap-6">
       {/* ── Page header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-mono text-2xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="font-mono text-2xl font-bold tracking-tight">{heroTitle}</h1>
           <p className="mt-0.5 font-mono text-xs text-muted-foreground">
             {new Date().toLocaleDateString("en-NG", {
               weekday: "long",

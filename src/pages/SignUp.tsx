@@ -1,4 +1,6 @@
 import { SignUp } from "@clerk/clerk-react"
+import { BrandLogo } from "@/components/brand/BrandLogo"
+import { AMELIA_DESCRIPTION } from "@/lib/branding"
 import { ROUTES } from "@/constants/routes"
 
 export function SignUpPage() {
@@ -10,12 +12,7 @@ export function SignUpPage() {
         style={{ backgroundColor: "var(--foreground)", color: "var(--background)" }}
       >
         <div>
-          <span
-            className="text-xl font-bold tracking-widest uppercase"
-            style={{ fontFamily: "var(--font-mono)", color: "var(--primary)" }}
-          >
-            Amelia
-          </span>
+          <BrandLogo variant="full" />
         </div>
 
         <div className="space-y-6">
@@ -33,7 +30,7 @@ export function SignUpPage() {
             className="text-base leading-relaxed max-w-xs"
             style={{ color: "color-mix(in oklch, var(--background) 65%, transparent)" }}
           >
-            AI-powered billing, HMO claims, and payment collection — built for Nigerian clinics.
+            {AMELIA_DESCRIPTION}.
           </p>
         </div>
 
@@ -51,12 +48,7 @@ export function SignUpPage() {
         style={{ backgroundColor: "var(--background)" }}
       >
         <div className="mb-8 lg:hidden">
-          <span
-            className="text-2xl font-bold tracking-widest uppercase"
-            style={{ fontFamily: "var(--font-mono)", color: "var(--primary)" }}
-          >
-            Amelia
-          </span>
+          <BrandLogo variant="mark" />
         </div>
 
         <SignUp

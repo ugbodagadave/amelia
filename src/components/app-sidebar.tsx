@@ -10,6 +10,7 @@ import {
   GearSixIcon,
 } from "@phosphor-icons/react"
 
+import { BrandLogo } from "@/components/brand/BrandLogo"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
 import {
@@ -34,21 +35,19 @@ const NAV_ITEMS = [
 function SidebarLogo() {
   const { state } = useSidebar()
   return (
-    <div className="flex h-12 items-center px-4">
+    <div
+      className={
+        state === "collapsed"
+          ? "flex h-12 items-center justify-center px-0"
+          : "flex h-12 items-center px-3"
+      }
+    >
       {state === "collapsed" ? (
-        <span
-          className="font-mono font-bold text-xl"
-          style={{ color: "var(--primary)", fontFamily: "var(--font-mono)" }}
-        >
-          A
-        </span>
+        <div className="flex size-8 items-center justify-center">
+          <BrandLogo variant="mark" className="shrink-0" />
+        </div>
       ) : (
-        <span
-          className="font-mono font-bold text-xl tracking-tight"
-          style={{ color: "var(--primary)", fontFamily: "var(--font-mono)" }}
-        >
-          Amelia
-        </span>
+        <BrandLogo variant="full" className="shrink-0" />
       )}
     </div>
   )

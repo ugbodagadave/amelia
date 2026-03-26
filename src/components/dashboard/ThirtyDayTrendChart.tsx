@@ -117,6 +117,7 @@ export function ThirtyDayTrendChart({ data }: ThirtyDayTrendChartProps) {
               stroke="var(--color-revenue)"
               strokeWidth={2}
               dot={false}
+              isAnimationActive={false}
             />
           </LineChart>
         </ChartContainer>

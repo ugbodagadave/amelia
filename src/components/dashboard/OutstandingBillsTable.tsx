@@ -1,11 +1,18 @@
 import { useState } from "react"
-import { WhatsappLogoIcon } from "@phosphor-icons/react"
+import { ReceiptIcon, WhatsappLogoIcon } from "@phosphor-icons/react"
 import type { Id } from "../../../convex/_generated/dataModel"
 import type { BillStatus } from "@/lib/billing"
 import { formatCurrency } from "@/lib/formatting"
 import { BillStatusBadge } from "@/components/billing/BillStatusBadge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -50,8 +57,18 @@ export function OutstandingBillsTable({ bills, onResendWhatsApp }: OutstandingBi
   if (bills.length === 0) {
     return (
       <Card>
-        <CardContent className="py-14 text-center">
-          <p className="font-mono text-xs text-muted-foreground">No outstanding bills — all caught up</p>
+        <CardContent className="py-8">
+          <Empty className="border-border bg-muted/20">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <ReceiptIcon />
+              </EmptyMedia>
+              <EmptyTitle>No outstanding bills</EmptyTitle>
+              <EmptyDescription>
+                Collections are balanced right now. Any unpaid bills will appear here for follow-up.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         </CardContent>
       </Card>
     )

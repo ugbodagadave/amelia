@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 const THEMES = { light: "", dark: ".dark" } as const
 
 const INITIAL_DIMENSION = { width: 320, height: 200 } as const
+const CHART_RESIZE_DEBOUNCE_MS = 120
 type TooltipNameType = number | string
 
 export type ChartConfig = Record<
@@ -70,6 +71,7 @@ function ChartContainer({
       >
         <ChartStyle id={chartId} config={config} />
         <RechartsPrimitive.ResponsiveContainer
+          debounce={CHART_RESIZE_DEBOUNCE_MS}
           initialDimension={initialDimension}
         >
           {children}

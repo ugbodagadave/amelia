@@ -112,7 +112,12 @@ export function TopServicesChart({ data }: TopServicesChartProps) {
                 />
               }
             />
-            <Bar dataKey="totalRevenue" fill="var(--color-totalRevenue)" radius={2} />
+            <Bar
+              dataKey="totalRevenue"
+              fill="var(--color-totalRevenue)"
+              radius={2}
+              isAnimationActive={false}
+            />
           </BarChart>
         </ChartContainer>
       </CardContent>

@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values"
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server"
+import { internal } from "./_generated/api"
 import {
   buildPatientFullName,
   calculateAgeFromDateOfBirth,
@@ -7,9 +8,11 @@ import {
   normalizePhoneNumber,
   validatePatientInput,
 } from "../src/lib/patients"
+import { ROUTES } from "../src/constants/routes"
+import { NOTIFICATION_TYPE } from "../src/lib/notifications"
 import { requireClerkUserId } from "./lib/auth"
 
-async function getCurrentClinicId(ctx: MutationCtx | QueryCtx) {
+async function getCurrentClinic(ctx: MutationCtx | QueryCtx) {
   const clerkUserId = await requireClerkUserId(ctx)
   const clinic = await ctx.db
     .query("clinics")
@@ -23,6 +26,11 @@ async function getCurrentClinicId(ctx: MutationCtx | QueryCtx) {
     })
   }
 
+  return { clinic, clerkUserId }
+}
+
+async function getCurrentClinicId(ctx: MutationCtx | QueryCtx) {
+  const { clinic } = await getCurrentClinic(ctx)
   return clinic._id
 }
 
@@ -145,7 +153,8 @@ export const create = mutation({
   },
   returns: v.id("patients"),
   handler: async (ctx, args) => {
-    const clinicId = await getCurrentClinicId(ctx)
+    const { clinic, clerkUserId } = await getCurrentClinic(ctx)
+    const clinicId = clinic._id
     const fieldErrors = validatePatientInput({
       surname: args.surname,
       otherNames: args.otherNames,
@@ -167,7 +176,8 @@ export const create = mutation({
       })
     }
 
-    return await ctx.db.insert("patients", {
+    const createdAt = Date.now()
+    const patientId = await ctx.db.insert("patients", {
       clinicId,
       surname: args.surname.trim(),
       otherNames: args.otherNames.trim(),
@@ -189,7 +199,22 @@ export const create = mutation({
               value: field.value.trim(),
             }))
           : undefined,
-      createdAt: Date.now(),
+      createdAt,
     })
+
+    const patientName = buildPatientFullName(args.surname, args.otherNames)
+    await ctx.runMutation(internal.notifications.createNotification, {
+      clinicId,
+      recipientClerkUserId: clerkUserId,
+      type: NOTIFICATION_TYPE.PATIENT_CREATED,
+      title: "Patient added",
+      description: `${patientName} was added to ${clinic.name}.`,
+      route: `${ROUTES.PATIENTS}/${patientId}`,
+      entityId: patientId,
+      entityLabel: patientName,
+      createdAt,
+    })
+
+    return patientId
   },
 })

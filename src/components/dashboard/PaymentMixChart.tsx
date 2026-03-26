@@ -112,7 +112,12 @@ export function PaymentMixChart({ data }: PaymentMixChartProps) {
                 />
               }
             />
-            <Bar dataKey="totalAmount" fill="var(--color-totalAmount)" radius={2} />
+            <Bar
+              dataKey="totalAmount"
+              fill="var(--color-totalAmount)"
+              radius={2}
+              isAnimationActive={false}
+            />
           </BarChart>
         </ChartContainer>
       </CardContent>

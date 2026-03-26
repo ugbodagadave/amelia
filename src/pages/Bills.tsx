@@ -1,5 +1,5 @@
 import { useDeferredValue, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { useQuery } from "convex/react"
 import { FunnelIcon, MagnifyingGlassIcon, PlusIcon } from "@phosphor-icons/react"
 import { api } from "../../convex/_generated/api"
@@ -47,6 +47,7 @@ export function BillsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | BillStatus>("all")
   const deferredSearch = useDeferredValue(searchTerm.trim().toLowerCase())
+  const navigate = useNavigate()
 
   if (bills === undefined) {
     return (
@@ -111,7 +112,9 @@ export function BillsPage() {
             {BILL_FILTER_TABS.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>
                 <span>{tab.label}</span>
-                <Badge variant="secondary">{counts[tab.value]}</Badge>
+                <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-muted px-1 font-mono text-[10px] tabular-nums text-muted-foreground">
+                  {counts[tab.value]}
+                </span>
               </TabsTrigger>
             ))}
           </TabsList>
@@ -147,12 +150,15 @@ export function BillsPage() {
                       <TableHead>Status</TableHead>
                       <TableHead>Auth</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Open</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredBills.map((bill) => (
-                      <TableRow key={bill._id}>
+                      <TableRow
+                        key={bill._id}
+                        className="cursor-pointer"
+                        onClick={() => navigate(buildBillDetailPath(bill._id))}
+                      >
                         <TableCell>
                           <div className="flex flex-col gap-1">
                             <span className="font-medium">{bill.patientName}</span>
@@ -178,11 +184,6 @@ export function BillsPage() {
                           )}
                         </TableCell>
                         <TableCell>{new Date(bill.createdAt).toLocaleDateString("en-NG")}</TableCell>
-                        <TableCell className="text-right">
-                          <Button asChild variant="ghost">
-                            <Link to={buildBillDetailPath(bill._id)}>Open</Link>
-                          </Button>
-                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

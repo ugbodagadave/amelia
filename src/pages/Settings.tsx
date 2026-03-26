@@ -1,9 +1,7 @@
 import { useState } from "react"
 import { useMutation, useQuery } from "convex/react"
 import {
-  DotsThreeOutlineVerticalIcon,
   FirstAidKitIcon,
-  NotePencilIcon,
   PlusIcon,
   TrashIcon,
 } from "@phosphor-icons/react"
@@ -64,12 +62,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 
 interface ServiceFormState {
   serviceId?: string
@@ -84,6 +76,10 @@ const INITIAL_SERVICE_FORM: ServiceFormState = {
   defaultPrice: "",
 }
 
+function formEqual(a: ServiceFormState, b: ServiceFormState) {
+  return a.name === b.name && a.category === b.category && a.defaultPrice === b.defaultPrice
+}
+
 export function SettingsPage() {
   const services = useQuery(api.serviceCatalog.listForClinic)
   const upsertService = useMutation(api.serviceCatalog.upsertService)
@@ -92,21 +88,34 @@ export function SettingsPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [deletingServiceId, setDeletingServiceId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [formState, setFormState] = useState<ServiceFormState>(INITIAL_SERVICE_FORM)
+  const [originalForm, setOriginalForm] = useState<ServiceFormState | null>(null)
+
+  const isDirty = originalForm === null || !formEqual(formState, originalForm)
+  const isEditMode = Boolean(formState.serviceId)
+
+  const closeDialog = () => {
+    setIsDialogOpen(false)
+    setFormState(INITIAL_SERVICE_FORM)
+    setOriginalForm(null)
+  }
 
   const openCreateDialog = () => {
     setFormState(INITIAL_SERVICE_FORM)
+    setOriginalForm(null)
     setIsDialogOpen(true)
   }
 
   const openEditDialog = (service: NonNullable<typeof services>[number]) => {
-    setFormState({
+    const values: ServiceFormState = {
       serviceId: service._id,
       name: service.name,
       category: service.category,
       defaultPrice: formatPriceInput(String(service.defaultPrice)),
-    })
+    }
+    setFormState(values)
+    setOriginalForm(values)
     setIsDialogOpen(true)
   }
 
@@ -136,8 +145,7 @@ export function SettingsPage() {
       })
 
       toast.success(formState.serviceId ? "Service updated." : "Service added.")
-      setIsDialogOpen(false)
-      setFormState(INITIAL_SERVICE_FORM)
+      closeDialog()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to save service.")
     } finally {
@@ -145,16 +153,18 @@ export function SettingsPage() {
     }
   }
 
-  const handleDelete = async (serviceId: string) => {
-    setDeletingServiceId(serviceId)
+  const handleDelete = async () => {
+    if (!formState.serviceId) return
+    setIsDeleting(true)
 
     try {
-      await removeService({ serviceId: serviceId as never })
+      await removeService({ serviceId: formState.serviceId as never })
       toast.success("Service removed.")
+      closeDialog()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to remove service.")
     } finally {
-      setDeletingServiceId(null)
+      setIsDeleting(false)
     }
   }
 
@@ -165,8 +175,7 @@ export function SettingsPage() {
           <div className="grid gap-1">
             <CardTitle className="font-mono text-xl">Service catalog</CardTitle>
             <CardDescription>
-              These prices were seeded during onboarding. Adjust them now so patient bills inherit
-              the correct clinic defaults.
+              Manage your clinic's billable services and default prices.
             </CardDescription>
           </div>
           <CardAction>
@@ -205,42 +214,23 @@ export function SettingsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Default price</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead className="w-44">Category</TableHead>
+                  <TableHead className="w-36">Default price</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {services.map((service: ServiceCatalogItem) => (
-                  <TableRow key={service._id}>
+                  <TableRow
+                    key={service._id}
+                    className="cursor-pointer"
+                    onClick={() => openEditDialog(service)}
+                  >
                     <TableCell className="font-medium">{service.name}</TableCell>
                     <TableCell className="capitalize">
                       {service.category.replace("_", " ")}
                     </TableCell>
                     <TableCell>
                       ₦{service.defaultPrice.toLocaleString("en-NG")}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-label={`Actions for ${service.name}`} size="icon" variant="ghost">
-                            <DotsThreeOutlineVerticalIcon />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditDialog(service)}>
-                            <NotePencilIcon data-icon="inline-start" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(service._id)}
-                            disabled={deletingServiceId === service._id}
-                          >
-                            <TrashIcon data-icon="inline-start" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -250,14 +240,16 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) closeDialog() }}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="font-mono text-base">
-              {formState.serviceId ? "Edit service" : "Add service"}
+              {isEditMode ? "Edit service" : "Add service"}
             </DialogTitle>
             <DialogDescription>
-              Update your clinic's billable services and default prices without leaving the table.
+              {isEditMode
+                ? "Update the service details. Changes only take effect when saved."
+                : "Add a new billable service to your clinic catalog."}
             </DialogDescription>
           </DialogHeader>
 
@@ -329,18 +321,65 @@ export function SettingsPage() {
               </InputGroup>
             </div>
 
-            <Button disabled={isSaving} type="submit">
-              {isSaving ? (
-                <>
-                  <Spinner data-icon="inline-start" />
-                  Saving service
-                </>
-              ) : formState.serviceId ? (
-                "Save changes"
+            {/* Action row */}
+            <div className="flex items-center justify-between pt-2">
+              {/* Delete — only shown for existing services */}
+              {isEditMode ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDelete}
+                  disabled={isDeleting || isSaving}
+                >
+                  {isDeleting ? (
+                    <>
+                      <Spinner data-icon="inline-start" />
+                      Deleting…
+                    </>
+                  ) : (
+                    <>
+                      <TrashIcon data-icon="inline-start" />
+                      Delete
+                    </>
+                  )}
+                </Button>
               ) : (
-                "Add service"
+                <span />
               )}
-            </Button>
+
+              {/* Close / Cancel + Save */}
+              <div className="flex gap-2">
+                {isEditMode && isDirty && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={closeDialog}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </Button>
+                )}
+                <Button
+                  type={isEditMode && isDirty ? "submit" : "button"}
+                  disabled={isSaving || isDeleting}
+                  onClick={isEditMode && !isDirty ? closeDialog : undefined}
+                >
+                  {isSaving ? (
+                    <>
+                      <Spinner data-icon="inline-start" />
+                      Saving…
+                    </>
+                  ) : !isEditMode ? (
+                    "Add service"
+                  ) : isDirty ? (
+                    "Save changes"
+                  ) : (
+                    "Close"
+                  )}
+                </Button>
+              </div>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

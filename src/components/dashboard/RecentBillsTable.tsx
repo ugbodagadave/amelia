@@ -1,4 +1,5 @@
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
+import { ArrowRightIcon } from "@phosphor-icons/react"
 import type { Id } from "../../../convex/_generated/dataModel"
 import type { BillStatus } from "@/lib/billing"
 import { ROUTES } from "@/constants/routes"
@@ -8,6 +9,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -113,6 +115,15 @@ export function RecentBillsTable({ bills }: RecentBillsTableProps) {
           </TableBody>
         </Table>
       </CardContent>
+      <CardFooter className="border-t px-6 py-3">
+        <Link
+          to={ROUTES.BILLS}
+          className="ml-auto flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          View all bills
+          <ArrowRightIcon className="size-3.5" />
+        </Link>
+      </CardFooter>
     </Card>
   )
 }

@@ -67,9 +67,17 @@ export function AnalyticsPage() {
       <h1 className="font-mono text-2xl font-bold tracking-tight">Analytics</h1>
 
       <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="outstanding" className="gap-2">
+        <TabsList className="gap-2 bg-transparent p-0">
+          <TabsTrigger
+            value="overview"
+            className="border border-border bg-background px-3 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Overview
+          </TabsTrigger>
+          <TabsTrigger
+            value="outstanding"
+            className="gap-2 border border-border bg-background px-3 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
             Outstanding Bills
             {outstandingBills !== undefined && outstandingBills.length > 0 && (
               <Badge variant="secondary" className="font-mono text-[10px] px-1.5 py-0">

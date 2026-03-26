@@ -120,3 +120,51 @@ test("chart components use ChartContainer (not raw ResponsiveContainer)", async 
     expect(source).not.toContain("ResponsiveContainer")
   }
 })
+
+test("dashboard and analytics charts disable series animation for fast layout changes", async () => {
+  const chartFiles = [
+    "./src/components/dashboard/SevenDayRevenueChart.tsx",
+    "./src/components/dashboard/ThirtyDayTrendChart.tsx",
+    "./src/components/dashboard/ClaimsByStatusChart.tsx",
+    "./src/components/dashboard/TopServicesChart.tsx",
+    "./src/components/dashboard/PaymentMixChart.tsx",
+  ]
+  for (const file of chartFiles) {
+    const source = await Bun.file(file).text()
+    expect(source).toContain("isAnimationActive={false}")
+  }
+})
+
+test("analytics page uses explicit active-state tab styling", async () => {
+  const source = await Bun.file("./src/pages/Analytics.tsx").text()
+  expect(source).toContain('<TabsList className="gap-2 bg-transparent p-0">')
+  expect(source).toContain("data-[state=active]:bg-primary")
+  expect(source).toContain("data-[state=active]:text-primary-foreground")
+})
+
+test("outstanding bills empty state uses the shared Empty component", async () => {
+  const source = await Bun.file("./src/components/dashboard/OutstandingBillsTable.tsx").text()
+  expect(source).toContain("Empty")
+  expect(source).not.toContain("No outstanding bills — all caught up</p>")
+})
+
+test("analytics page does not remount charts on sidebar state changes", async () => {
+  const source = await Bun.file("./src/pages/Analytics.tsx").text()
+  expect(source).not.toContain("useSidebar")
+  expect(source).not.toContain("analyticsChartLayoutKey")
+  expect(source).not.toContain("key={`${analyticsChartLayoutKey}")
+})
+
+test("dashboard page does not remount charts on sidebar state changes", async () => {
+  const source = await Bun.file("./src/pages/Dashboard.tsx").text()
+  expect(source).not.toContain("useSidebar")
+  expect(source).not.toContain("dashboardChartLayoutKey")
+  expect(source).not.toContain("key={`${dashboardChartLayoutKey}")
+})
+
+test("dashboard hero greets the current clinic instead of repeating the page title", async () => {
+  const source = await Bun.file("./src/pages/Dashboard.tsx").text()
+  expect(source).toContain("api.clinics.getCurrentClinic")
+  expect(source).toContain("Welcome,")
+  expect(source).not.toContain('>Dashboard</h1>')
+})
