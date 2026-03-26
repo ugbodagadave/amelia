@@ -99,13 +99,15 @@ export function ThirtyDayTrendChart({ data }: ThirtyDayTrendChartProps) {
                 <ChartTooltipContent
                   className="w-[180px]"
                   nameKey="revenue"
-                  labelFormatter={(value: string) =>
-                    new Date(`${value}T12:00:00.000Z`).toLocaleDateString("en-US", {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                      timeZone: "UTC",
-                    })
+                  labelFormatter={(value) =>
+                    typeof value === "string"
+                      ? new Date(`${value}T12:00:00.000Z`).toLocaleDateString("en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                          timeZone: "UTC",
+                        })
+                      : value
                   }
                   formatter={(value) => [formatCurrency(Number(value)), "Revenue"]}
                 />

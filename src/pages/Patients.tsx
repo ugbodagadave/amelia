@@ -1,6 +1,6 @@
 import { startTransition, useDeferredValue, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { useMutation, useQuery } from "convex/react"
+import { useAction, useMutation, useQuery } from "convex/react"
 import {
   IdentificationCardIcon,
   MagnifyingGlassIcon,
@@ -17,7 +17,16 @@ import {
   type PatientFormInput,
   validatePatientInput,
 } from "@/lib/patients"
+import {
+  OCR_SOURCE,
+  buildHmoCoverageSnapshotFromOcr,
+  mergePatientFormWithOcr,
+  type ExtractHmoDetailsResult,
+  type PatientOcrMergeResult,
+} from "@/lib/ocr"
 import { ROUTES } from "@/constants/routes"
+import { HmoDocumentOcrCard } from "@/components/ocr/HmoDocumentOcrCard"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -125,12 +134,16 @@ export function PatientsPage() {
   const patients = useQuery(api.patients.list)
   const hmoTemplates = useQuery(api.patients.listHmoTemplates)
   const createPatient = useMutation(api.patients.create)
+  const extractHmoDetails = useAction(api.ocr.extractHmoDetails)
 
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isExtracting, setIsExtracting] = useState(false)
   const [formState, setFormState] = useState<PatientFormInput>(INITIAL_FORM_STATE)
   const [formErrors, setFormErrors] = useState<PatientFormErrors>({})
+  const [ocrResult, setOcrResult] = useState<ExtractHmoDetailsResult | null>(null)
+  const [ocrMergeResult, setOcrMergeResult] = useState<PatientOcrMergeResult | null>(null)
   const deferredSearch = useDeferredValue(searchTerm.trim().toLowerCase())
 
   const selectedTemplate =
@@ -152,6 +165,8 @@ export function PatientsPage() {
   function resetForm() {
     setFormState(INITIAL_FORM_STATE)
     setFormErrors({})
+    setOcrResult(null)
+    setOcrMergeResult(null)
   }
 
   function openDialog() {
@@ -203,6 +218,7 @@ export function PatientsPage() {
         hmoSpecificId: undefined,
         hmoAdditionalFields:
           formState.paymentType === "hmo" ? formState.hmoAdditionalFields : [],
+        ocrAudit: formState.paymentType === "hmo" ? ocrResult?.audit : undefined,
       })
 
       toast.success("Patient registered.")
@@ -220,6 +236,57 @@ export function PatientsPage() {
       setIsSaving(false)
     }
   }
+
+  async function handleOcrExtract(payload: {
+    base64Data: string
+    mediaType: string
+    fileName: string
+  }) {
+    if (!hmoTemplates) {
+      return
+    }
+
+    setIsExtracting(true)
+
+    try {
+      const result = await extractHmoDetails({
+        ...payload,
+        source: OCR_SOURCE.PATIENT_REGISTRATION,
+      })
+
+      let nextMergeResult: PatientOcrMergeResult | null = null
+      setFormState((currentFormState) => {
+        nextMergeResult = mergePatientFormWithOcr(
+          currentFormState,
+          result.extracted,
+          hmoTemplates,
+        )
+        return nextMergeResult.nextForm
+      })
+      setFormErrors((currentErrors) => ({
+        ...currentErrors,
+        hmoName: undefined,
+        enrolleeNhisNo: undefined,
+        hmoAdditionalFields: undefined,
+      }))
+      setOcrResult(result)
+      setOcrMergeResult(nextMergeResult)
+      toast.success("HMO details extracted.")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to extract HMO details.")
+    } finally {
+      setIsExtracting(false)
+    }
+  }
+
+  const ocrCoveragePreview =
+    ocrResult && formState.paymentType === "hmo"
+      ? buildHmoCoverageSnapshotFromOcr(
+          "pending-patient",
+          formState.hmoName?.trim() || ocrResult.extracted.hmoName,
+          ocrResult.audit,
+        )
+      : null
 
   if (patients === undefined || hmoTemplates === undefined) {
     return (
@@ -345,6 +412,14 @@ export function PatientsPage() {
               Capture the identity and insurance fields needed before billing and HMO claims.
             </DialogDescription>
           </DialogHeader>
+
+          <HmoDocumentOcrCard
+            title="Scan HMO Card"
+            description="Upload an HMO card or pre-authorization letter to pre-fill insurance details."
+            isExtracting={isExtracting}
+            result={ocrResult}
+            onExtract={handleOcrExtract}
+          />
 
           <FieldGroup>
             <div className="grid gap-4 md:grid-cols-2">
@@ -486,6 +561,23 @@ export function PatientsPage() {
 
             {formState.paymentType === "hmo" && (
               <>
+                {ocrResult ? (
+                  <Alert>
+                    <IdentificationCardIcon />
+                    <AlertTitle>Extracted via OCR</AlertTitle>
+                    <AlertDescription>
+                      {ocrMergeResult?.matchedTemplateName
+                        ? `Matched ${ocrMergeResult.matchedTemplateName} and filled blank insurance fields only.`
+                        : ocrMergeResult?.unmatchedHmoNameHint
+                          ? `Could not match "${ocrMergeResult.unmatchedHmoNameHint}" to a clinic HMO template automatically.`
+                          : "OCR hints are available for review before saving."}
+                      {ocrCoveragePreview?.coverageLimit
+                        ? ` Coverage limit detected: ₦${ocrCoveragePreview.coverageLimit.toLocaleString("en-NG")}.`
+                        : ""}
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+
                 <div className="grid gap-4 md:grid-cols-2">
                   <Field data-invalid={!!formErrors.hmoName || undefined}>
                     <FieldLabel>HMO name</FieldLabel>
@@ -525,6 +617,15 @@ export function PatientsPage() {
                           </SelectGroup>
                         </SelectContent>
                       </Select>
+                      {ocrResult ? (
+                        <FieldDescription>
+                          {ocrMergeResult?.matchedTemplateName
+                            ? "Extracted via OCR."
+                            : ocrMergeResult?.unmatchedHmoNameHint
+                              ? `OCR detected: ${ocrMergeResult.unmatchedHmoNameHint}`
+                              : "OCR review available."}
+                        </FieldDescription>
+                      ) : null}
                       <FieldError>{formErrors.hmoName}</FieldError>
                     </FieldContent>
                   </Field>
@@ -538,6 +639,15 @@ export function PatientsPage() {
                         onChange={(event) => updateForm("enrolleeNhisNo", event.target.value)}
                         aria-invalid={!!formErrors.enrolleeNhisNo}
                       />
+                      {ocrResult?.extracted.nhisNumber || ocrResult?.extracted.memberId ? (
+                        <FieldDescription>
+                          {ocrMergeResult?.skippedFields.includes("enrolleeNhisNo")
+                            ? `OCR found ${
+                                ocrResult.extracted.nhisNumber || ocrResult.extracted.memberId
+                              }, but your manual value was preserved.`
+                            : "Extracted via OCR."}
+                        </FieldDescription>
+                      ) : null}
                       <FieldError>{formErrors.enrolleeNhisNo}</FieldError>
                     </FieldContent>
                   </Field>
@@ -565,6 +675,15 @@ export function PatientsPage() {
                             }}
                             aria-invalid={!!formErrors.hmoAdditionalFields}
                           />
+                          {ocrResult?.extracted.additionalIds[field.fieldKey] ? (
+                            <FieldDescription>
+                              {ocrMergeResult?.skippedFields.includes(
+                                `hmoAdditionalFields.${field.fieldKey}`,
+                              )
+                                ? `OCR found ${ocrResult.extracted.additionalIds[field.fieldKey]}, but your manual value was preserved.`
+                                : "Extracted via OCR."}
+                            </FieldDescription>
+                          ) : null}
                         </FieldContent>
                       </Field>
                     ))}

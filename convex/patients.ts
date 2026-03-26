@@ -8,6 +8,7 @@ import {
   normalizePhoneNumber,
   validatePatientInput,
 } from "../src/lib/patients"
+import { buildHmoCoverageSnapshotFromOcr } from "../src/lib/ocr"
 import { ROUTES } from "../src/constants/routes"
 import { NOTIFICATION_TYPE } from "../src/lib/notifications"
 import { requireClerkUserId } from "./lib/auth"
@@ -150,6 +151,33 @@ export const create = mutation({
         value: v.string(),
       }),
     ),
+    ocrAudit: v.optional(
+      v.object({
+        source: v.union(v.literal("patient_registration"), v.literal("bill_builder")),
+        fileName: v.string(),
+        mediaType: v.union(
+          v.literal("image/jpeg"),
+          v.literal("image/png"),
+          v.literal("image/webp"),
+          v.literal("application/pdf"),
+        ),
+        extractedAt: v.number(),
+        responseId: v.string(),
+        pagesProcessed: v.number(),
+        markdown: v.string(),
+        rawResponse: v.string(),
+        extracted: v.object({
+          hmoName: v.string(),
+          memberId: v.string(),
+          enrolleeName: v.string(),
+          nhisNumber: v.string(),
+          authorizationCode: v.string(),
+          coverageType: v.string(),
+          coverageLimit: v.string(),
+          additionalIds: v.record(v.string(), v.string()),
+        }),
+      }),
+    ),
   },
   returns: v.id("patients"),
   handler: async (ctx, args) => {
@@ -201,6 +229,45 @@ export const create = mutation({
           : undefined,
       createdAt,
     })
+
+    if (args.paymentType === "hmo" && args.ocrAudit) {
+      const snapshot = buildHmoCoverageSnapshotFromOcr(
+        patientId,
+        args.hmoName?.trim() || args.ocrAudit.extracted.hmoName,
+        args.ocrAudit,
+      )
+      const existingCoverage = await ctx.db
+        .query("hmo_coverages")
+        .withIndex("by_patient", (q) => q.eq("patientId", patientId))
+        .unique()
+
+      if (existingCoverage) {
+        await ctx.db.patch(existingCoverage._id, {
+          hmoName: snapshot.hmoName,
+          memberId: snapshot.memberId,
+          coverageType: snapshot.coverageType,
+          coverageLimit: snapshot.coverageLimit,
+          authorizationCode: snapshot.authorizationCode,
+          additionalIds: snapshot.additionalIds,
+          rawOcrData: snapshot.rawOcrData,
+          updatedAt: createdAt,
+        })
+      } else {
+        await ctx.db.insert("hmo_coverages", {
+          clinicId,
+          patientId,
+          hmoName: snapshot.hmoName,
+          memberId: snapshot.memberId,
+          coverageType: snapshot.coverageType,
+          coverageLimit: snapshot.coverageLimit,
+          authorizationCode: snapshot.authorizationCode,
+          additionalIds: snapshot.additionalIds,
+          rawOcrData: snapshot.rawOcrData,
+          createdAt,
+          updatedAt: createdAt,
+        })
+      }
+    }
 
     const patientName = buildPatientFullName(args.surname, args.otherNames)
     await ctx.runMutation(internal.notifications.createNotification, {

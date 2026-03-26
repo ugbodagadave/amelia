@@ -17,7 +17,8 @@
       "Bash(bun test:*)",
       "Bash(bunx tsc:*)",
       "Bash(grep:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "WebSearch"
     ]
   }
 }

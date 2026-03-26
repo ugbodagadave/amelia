@@ -7,7 +7,7 @@ import {
 } from "@phosphor-icons/react"
 import { api } from "../../convex/_generated/api"
 import { buildClaimBatchAlertId } from "@/lib/dashboardStats"
-import { formatCurrency, formatDateShort } from "@/lib/formatting"
+import { formatCurrency } from "@/lib/formatting"
 import type { DashboardAlert } from "@/components/dashboard/AlertBanner"
 import { AlertBanner } from "@/components/dashboard/AlertBanner"
 import { LiveBadge } from "@/components/dashboard/LiveBadge"

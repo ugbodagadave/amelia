@@ -16,6 +16,7 @@
     "@clerk/backend": "^3.2.2",
     "@clerk/clerk-react": "^5.61.3",
     "@e2b/code-interpreter": "^2.4.0",
+    "@mistralai/mistralai": "^2.1.2",
     "@noble/hashes": "^2.0.1",
     "@phosphor-icons/react": "^2.1.10",
     "africastalking": "^0.7.9",

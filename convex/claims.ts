@@ -238,7 +238,6 @@ export const getClaimBatch = query({
   args: { claimBatchId: v.id("claim_batches") },
   handler: async (ctx, args) => {
     const clinicId = await getCurrentClinicId(ctx)
-    const clinic = await ctx.db.get(clinicId)
     const batch = await ctx.db.get(args.claimBatchId)
 
     if (!batch || batch.clinicId !== clinicId) {

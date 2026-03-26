@@ -106,7 +106,9 @@ export function ClaimsByStatusChart({ data }: ClaimsByStatusChartProps) {
                 position="top"
                 offset={8}
                 className="fill-muted-foreground font-mono text-xs"
-                formatter={(value: number) => (value === 0 ? "" : value)}
+                formatter={(value) =>
+                  typeof value === "number" && value === 0 ? "" : value
+                }
               />
             </Bar>
           </BarChart>

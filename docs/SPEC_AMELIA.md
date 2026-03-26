@@ -545,8 +545,11 @@ hmo_templates: {
 
 [Mistral OCR — optional path]
         └── HMO card image / pre-auth letter upload
-            → structured JSON: { hmoName, memberId, authCode, coverageLimit }
-            → pre-fills patient HMO fields on registration
+            → OCR markdown via `mistral-ocr-latest`
+            → second Mistral structured-output pass returns normalized JSON
+            → pre-fills blank patient HMO fields on registration without overwriting manual edits
+            → latest OCR-backed HMO snapshot saved on successful patient save
+            → bill builder uses OCR assistively for auth-code suggestions only
 
 [Firecrawl — pre-build pipeline]
         └── Scrape NHIA accredited TPA list + top HMO websites
@@ -583,7 +586,7 @@ hmo_templates: {
 - Cover letter PDF generation (Medical Director sign-off block)
 - 10% auto-deduction calculation in claim totals
 - TPA submission log (date sent, TPA name, expected payment date)
-- Mistral OCR for HMO card upload (stretch goal if time permits)
+- Mistral OCR for HMO card upload and bill-side auth assist
 
 ### Day 4 — Dashboard + Demo Polish (March 26)
 - Revenue dashboard (Recharts: daily collections, collection rate, payment breakdown)

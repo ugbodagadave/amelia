@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { useMutation, useQuery } from "convex/react"
+import { useAction, useMutation, useQuery } from "convex/react"
 import { FileTextIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { api } from "../../convex/_generated/api"
 import { BillBuilderAuthTrackerCard } from "@/components/billing/AuthTrackerCard"
 import { BillSummaryCard } from "@/components/billing/BillSummaryCard"
+import { HmoDocumentOcrCard } from "@/components/ocr/HmoDocumentOcrCard"
 import { PatientSelector } from "@/components/billing/PatientSelector"
 import { PaymentReadinessCard } from "@/components/billing/PaymentReadinessCard"
 import { ServiceSelector } from "@/components/billing/ServiceSelector"
@@ -20,7 +21,13 @@ import {
   validateBillInput,
 } from "@/lib/billing"
 import { formatPriceInput, parsePriceInput } from "@/lib/clinicOnboarding"
+import {
+  OCR_SOURCE,
+  mergeBillAuthorizationCodeWithOcr,
+  type ExtractHmoDetailsResult,
+} from "@/lib/ocr"
 import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Empty,
@@ -119,10 +126,14 @@ export function BillBuilderPage() {
   const patients = useQuery(api.bills.listPatients)
   const services = useQuery(api.bills.listServices)
   const createBill = useMutation(api.bills.create)
+  const extractHmoDetails = useAction(api.ocr.extractHmoDetails)
 
   const [formState, setFormState] = useState<BillFormState>(INITIAL_BILL_FORM_STATE)
   const [formErrors, setFormErrors] = useState<BillFormErrors>({})
   const [isSaving, setIsSaving] = useState(false)
+  const [isExtracting, setIsExtracting] = useState(false)
+  const [ocrResult, setOcrResult] = useState<ExtractHmoDetailsResult | null>(null)
+  const [authorizationCodeSuggestion, setAuthorizationCodeSuggestion] = useState("")
 
   const selectedPatient = patients?.find((patient) => patient._id === formState.patientId) ?? null
 
@@ -138,6 +149,41 @@ export function BillBuilderPage() {
   }, [patients, searchParams, formState.patientId])
 
   const paymentType = selectedPatient?.paymentType ?? "self_pay"
+
+  async function handleOcrExtract(payload: {
+    base64Data: string
+    mediaType: string
+    fileName: string
+  }) {
+    setIsExtracting(true)
+
+    try {
+      const result = await extractHmoDetails({
+        ...payload,
+        source: OCR_SOURCE.BILL_BUILDER,
+      })
+      const mergeResult = mergeBillAuthorizationCodeWithOcr(
+        formState.authorizationCode,
+        result.extracted.authorizationCode,
+      )
+
+      setFormState((current) => ({
+        ...current,
+        authorizationCode: mergeResult.authorizationCode,
+      }))
+      setAuthorizationCodeSuggestion(mergeResult.suggestedAuthorizationCode)
+      setOcrResult(result)
+      toast.success(
+        mergeResult.applied
+          ? "Authorization code extracted."
+          : "OCR completed. Review the extracted authorization suggestion.",
+      )
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to extract HMO details.")
+    } finally {
+      setIsExtracting(false)
+    }
+  }
 
   function updateInvestigation(index: number, patch: Partial<InvestigationFormItem>) {
     setFormState((current) => {
@@ -593,6 +639,29 @@ export function BillBuilderPage() {
           investigations={formState.investigations}
           medications={formState.medications}
         />
+        <HmoDocumentOcrCard
+          title="Scan HMO Document"
+          description="Upload a card or pre-authorization letter to pull an auth code and insurance hints into this bill."
+          isExtracting={isExtracting}
+          result={ocrResult}
+          onExtract={handleOcrExtract}
+        />
+        {ocrResult ? (
+          <Alert>
+            <FileTextIcon />
+            <AlertTitle>Bill OCR review</AlertTitle>
+            <AlertDescription>
+              {authorizationCodeSuggestion
+                ? `OCR found ${authorizationCodeSuggestion}, but your current authorization code was preserved.`
+                : ocrResult.extracted.authorizationCode
+                  ? "Authorization code was filled from OCR."
+                  : "No authorization code was found in the uploaded document."}
+              {ocrResult.extracted.hmoName
+                ? ` HMO hint: ${ocrResult.extracted.hmoName}.`
+                : ""}
+            </AlertDescription>
+          </Alert>
+        ) : null}
         <BillBuilderAuthTrackerCard
           paymentType={paymentType}
           authorizationCode={formState.authorizationCode}

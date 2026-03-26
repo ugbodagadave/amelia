@@ -498,51 +498,59 @@ All stats from a single reactive Convex query `getDashboardStats(clinicId, date)
 
 ---
 
-## Phase 7 — Mistral OCR Integration (HMO Card Reader)
+## ✅ Phase 7 — Mistral OCR Integration (HMO Card Reader)
 
 **Goal:** Staff can upload an HMO card photo or pre-authorization letter and have patient fields auto-populated.
 
-### 7.1 Document Upload UI
+### ✅ 7.1 Document Upload UI
 - Available on Patient Registration form and Bill Creation form
 - "Scan HMO Card" button: opens file picker (accepts image/*, application/pdf)
 - Upload preview: shows selected file name + thumbnail if image
 - "Extract Details" button triggers OCR action
+- UI uses existing shadcn form primitives plus shared upload state, loading, and extracted-value review hints
 
-### 7.2 Mistral OCR Action
+### ✅ 7.2 Mistral OCR Action
 Convex action: `extractHMODetails(fileBase64, mediaType)`
-- Package: `@mistralai/mistralai@2.0.0`
-- Encode file to base64
-- POST to Mistral OCR API (`mistral-ocr-latest` model)
-- Prompt: structured extraction request specifying exact fields to return as JSON:
+- Package: `@mistralai/mistralai` (current line at implementation time)
+- Validate supported media types: `image/jpeg`, `image/png`, `image/webp`, `application/pdf`
+- Call Mistral OCR with `mistral-ocr-latest`
+- Concatenate page markdown and run a second Mistral structured-output pass to normalize fields into strict JSON
+- Extraction schema:
   ```json
   {
-    "hmo_name": "",
-    "member_id": "",
-    "enrollee_name": "",
-    "nhis_number": "",
-    "authorization_code": "",
-    "coverage_type": "",
-    "coverage_limit": "",
-    "additional_ids": {}
+    "hmoName": "",
+    "memberId": "",
+    "enrolleeName": "",
+    "nhisNumber": "",
+    "authorizationCode": "",
+    "coverageType": "",
+    "coverageLimit": "",
+    "additionalIds": {}
   }
   ```
-- Parse response JSON
-- Return structured data to frontend
+- Return empty strings for missing scalar fields and an empty object for `additionalIds`
+- Return raw OCR metadata and markdown for audit, but do not persist anything from the action itself
 
-### 7.3 Auto-Fill
+### ✅ 7.3 Auto-Fill
 On successful OCR extraction:
-- Map extracted fields to form fields
+- Map extracted fields to form fields with a blank-only merge policy
 - Pre-fill: HMO Name (match to dropdown), Enrollee NHIS No., any additional identifiers
 - Show extracted values with amber highlight + "Extracted via OCR" label
 - Staff can edit any auto-filled value before saving
-- Store raw OCR response in `hmo_coverages.rawOcrData` for audit
+- Existing manual values are never overwritten automatically; skipped OCR values stay visible as hints
+- Bill Creation OCR is assistive only: it may pre-fill the bill auth code and show HMO hints, but it does not mutate patient insurance records
+- Store raw OCR response in `hmo_coverages.rawOcrData` only when the patient save succeeds, keeping a latest-snapshot record per patient
 
-**Tests for Phase 7:**
-- OCR action: handles PDF input (base64 encoded)
-- OCR action: handles image input (JPEG/PNG)
-- OCR action: returns empty strings (not null/undefined) for fields not found
-- Auto-fill: does not overwrite fields already manually entered by staff
-- Auto-fill: HMO name matched case-insensitively to dropdown options
+**Tests for Phase 7:** ✅ 9 tests in `tests/phase7.test.ts` and full `bun test` suite passing
+- ✅ OCR helpers validate supported PDF/image media types
+- ✅ OCR normalization returns empty strings (not null/undefined) for missing fields
+- ✅ HMO name matching is case-insensitive and punctuation-insensitive
+- ✅ Patient OCR auto-fill never overwrites manual staff input
+- ✅ OCR can promote a self-pay draft into an HMO registration flow when insurer data is found
+- ✅ Bill OCR preserves an existing manual authorization code and only offers suggestions
+- ✅ OCR-backed patient save builds the latest `hmo_coverages` audit snapshot
+- ✅ Shared upload component and Convex OCR action are wired into both patient registration and bill creation
+- ✅ Live Mistral OCR smoke call against `mistral-ocr-latest` completed successfully during verification
 
 ---
 
