@@ -11,17 +11,20 @@ import {
   type QueryCtx,
 } from "./_generated/server"
 import { api, internal } from "./_generated/api"
-import type { Doc, Id } from "./_generated/dataModel"
+import type { Id } from "./_generated/dataModel"
 import { requireClerkUserId } from "./lib/auth"
 import {
   BILL_PAYMENT_CHANNEL,
   PAYMENT_REQUEST_CHANNEL,
   PAYMENT_REQUEST_STATUS,
+  buildInterswitchWebhookSignature,
   buildPublicPaymentPath,
   buildTxnRef,
   buildWhatsAppTemplatePayload,
   buildWebCheckoutHash,
   formatAmountInKobo,
+  isCardCallbackResponseApproved,
+  isPublicPaymentLinkAvailable,
   isSuccessfulPaymentResponseCode,
   normalizePhoneForWhatsApp,
   normalizePhoneForSms,
@@ -30,6 +33,7 @@ import {
   validateBankVerificationInput,
   getBankVerificationFailureMessage,
   hasVerifiedBankAccountName,
+  validateInterswitchWebhookPayload,
   validatePaymentLinkToken,
 } from "../src/lib/payments"
 import { NIGERIAN_BANK_OPTIONS } from "../data/nigerian-banks"
@@ -94,6 +98,13 @@ interface PaymentRequestSendResult {
 
 type MetaLifecycleStatus = "sent" | "delivered" | "read" | "failed"
 const BANK_CACHE_STALE_AFTER_MS = 30 * 24 * 60 * 60 * 1000
+const EXTERNAL_REQUEST_TIMEOUT_MS = 8_000
+const PAYMENT_ATTEMPT_STATUS = {
+  INITIATED: "initiated",
+  CALLBACK_PENDING: "callback_pending",
+  PAID: "paid",
+  FAILED: "failed",
+} as const
 
 async function getCurrentClinicId(ctx: MutationCtx | QueryCtx) {
   const clerkUserId = await requireClerkUserId(ctx)
@@ -227,17 +238,35 @@ function buildPaymentSessionDetails(bill: {
   }
 }
 
-async function buildWebhookSignature(body: string, secret: string) {
-  const encodedSecret = new TextEncoder().encode(secret)
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encodedSecret,
-    { name: "HMAC", hash: "SHA-512" },
-    false,
-    ["sign"],
-  )
-  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body))
-  return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, "0")).join("")
+async function fetchWithTimeout(input: string, init?: RequestInit) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), EXTERNAL_REQUEST_TIMEOUT_MS)
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new ConvexError({
+        code: "REQUEST_TIMEOUT",
+        message: "The provider request timed out.",
+      })
+    }
+
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+function normalizeWebhookAmountInKobo(amount?: number | null) {
+  if (typeof amount !== "number" || !Number.isFinite(amount)) {
+    return null
+  }
+
+  return Math.round(amount)
 }
 
 export const getClinicByClerkUserId = internalQuery({
@@ -317,6 +346,17 @@ export const getPublicPaymentByToken = query({
       .unique()
 
     if (!bill) {
+      return null
+    }
+
+    if (
+      !isPublicPaymentLinkAvailable({
+        billStatus: bill.status,
+        createdAt: bill.createdAt,
+        tokenIssuedAt: bill.paymentLinkTokenIssuedAt,
+        paymentInitiatedAt: bill.paymentInitiatedAt,
+      })
+    ) {
       return null
     }
 
@@ -446,7 +486,8 @@ export const verifyNIN = action({
     lastName: v.string(),
     nin: v.string(),
   },
-  handler: async (_, args) => {
+  handler: async (ctx, args) => {
+    await requireClerkUserId(ctx)
     const { access_token } = await fetchMarketplaceToken()
     return await verifyMarketplaceNin({
       accessToken: access_token,
@@ -585,7 +626,7 @@ async function initiatePaymentForBill(
     }
   }
 
-  const response = await fetch("https://qa.interswitchng.com/collections/api/v1/opay/initialize", {
+  const response = await fetchWithTimeout("https://qa.interswitchng.com/collections/api/v1/opay/initialize", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -721,6 +762,16 @@ export const getBillPaymentContextById = internalQuery({
   },
 })
 
+export const getPaymentAttemptByTransactionReference = internalQuery({
+  args: { transactionReference: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("payment_attempts")
+      .withIndex("by_txn_ref", (q) => q.eq("transactionReference", args.transactionReference))
+      .unique()
+  },
+})
+
 export const persistPaymentSession = internalMutation({
   args: {
     billId: v.id("bills"),
@@ -734,6 +785,26 @@ export const persistPaymentSession = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const bill = await ctx.db.get(args.billId)
+    if (!bill) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Bill not found while starting payment.",
+      })
+    }
+
+    const existingAttempt = await ctx.db
+      .query("payment_attempts")
+      .withIndex("by_txn_ref", (q) => q.eq("transactionReference", args.transactionReference))
+      .unique()
+
+    if (existingAttempt) {
+      throw new ConvexError({
+        code: "DUPLICATE_TXN_REF",
+        message: "A payment session already exists for this transaction reference.",
+      })
+    }
+
     await ctx.db.patch(args.billId, {
       paymentChannel: args.paymentChannel,
       transactionReference: args.transactionReference,
@@ -744,6 +815,78 @@ export const persistPaymentSession = internalMutation({
       webCheckoutHash: args.webCheckoutHash,
       opayReference: args.opayReference,
       status: BILL_STATUS.PENDING_PAYMENT,
+    })
+
+    await ctx.db.insert("payment_attempts", {
+      clinicId: bill.clinicId,
+      billId: args.billId,
+      paymentChannel: args.paymentChannel,
+      transactionReference: args.transactionReference,
+      paymentLinkToken: args.paymentLinkToken,
+      paymentLink: args.paymentLink,
+      amountInKobo: formatAmountInKobo(bill.totalAmount),
+      amountInNaira: bill.totalAmount,
+      currency: "NGN",
+      status: PAYMENT_ATTEMPT_STATUS.INITIATED,
+      providerPaymentReference: args.opayReference,
+      interswitchRef: args.opayReference,
+      createdAt: args.paymentInitiatedAt,
+    })
+
+    return null
+  },
+})
+
+export const updatePaymentAttemptFromCardCallback = internalMutation({
+  args: {
+    paymentAttemptId: v.id("payment_attempts"),
+    responseCode: v.string(),
+    payRef: v.optional(v.string()),
+    callbackReceivedAt: v.number(),
+    status: v.union(
+      v.literal("initiated"),
+      v.literal("callback_pending"),
+      v.literal("paid"),
+      v.literal("failed"),
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.paymentAttemptId, {
+      callbackResponseCode: args.responseCode,
+      providerPaymentReference: args.payRef,
+      interswitchRef: args.payRef,
+      callbackReceivedAt: args.callbackReceivedAt,
+      status: args.status,
+    })
+
+    return null
+  },
+})
+
+export const finalizePaymentAttempt = internalMutation({
+  args: {
+    paymentAttemptId: v.id("payment_attempts"),
+    providerPaymentReference: v.optional(v.string()),
+    interswitchRef: v.optional(v.string()),
+    webhookEvent: v.optional(v.string()),
+    webhookReceivedAt: v.optional(v.number()),
+    paidAt: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const attempt = await ctx.db.get(args.paymentAttemptId)
+    if (!attempt) {
+      return null
+    }
+
+    await ctx.db.patch(args.paymentAttemptId, {
+      status: PAYMENT_ATTEMPT_STATUS.PAID,
+      providerPaymentReference: args.providerPaymentReference ?? attempt.providerPaymentReference,
+      interswitchRef: args.interswitchRef ?? attempt.interswitchRef,
+      webhookEvent: args.webhookEvent ?? attempt.webhookEvent,
+      webhookReceivedAt: args.webhookReceivedAt ?? attempt.webhookReceivedAt,
+      paidAt: args.paidAt,
     })
 
     return null
@@ -828,17 +971,6 @@ export const markBillPaid = internalMutation({
   },
 })
 
-export const finalizeCardPaymentCallback = action({
-  args: {
-    txnRef: v.string(),
-    payRef: v.optional(v.string()),
-    responseCode: v.string(),
-  },
-  handler: async (ctx, args): Promise<PaymentFinalizeResult> => {
-    return await ctx.runAction(internal.payments.finalizeCardPaymentCallbackInternal, args)
-  },
-})
-
 export const finalizeCardPaymentCallbackInternal = internalAction({
   args: {
     txnRef: v.string(),
@@ -846,11 +978,11 @@ export const finalizeCardPaymentCallbackInternal = internalAction({
     responseCode: v.string(),
   },
   handler: async (ctx, args): Promise<PaymentFinalizeResult> => {
-    const bill = (await ctx.runQuery(internal.payments.findBillByTransactionReference, {
+    const paymentAttempt = await ctx.runQuery(internal.payments.getPaymentAttemptByTransactionReference, {
       transactionReference: args.txnRef,
-    })) as Doc<"bills"> | null
+    })
 
-    if (!bill) {
+    if (!paymentAttempt) {
       return {
         status: "failed",
         message: "Payment reference could not be matched to a bill.",
@@ -858,39 +990,46 @@ export const finalizeCardPaymentCallbackInternal = internalAction({
       }
     }
 
-    const hasProviderReference = Boolean(args.payRef?.trim())
-    const responseCodeMissingButPaid = !args.responseCode && hasProviderReference
+    const bill = await ctx.runQuery(internal.payments.getBillPaymentContextById, {
+      billId: paymentAttempt.billId,
+    })
 
-    if (!isSuccessfulPaymentResponseCode(args.responseCode)) {
-      if (!responseCodeMissingButPaid) {
+    if (!bill) {
+      return {
+        status: "failed",
+        message: "Bill payment context could not be loaded.",
+        billId: null,
+      }
+    }
+
+    const isApproved = isCardCallbackResponseApproved(args.responseCode)
+    await ctx.runMutation(internal.payments.updatePaymentAttemptFromCardCallback, {
+      paymentAttemptId: paymentAttempt._id,
+      responseCode: args.responseCode,
+      payRef: args.payRef,
+      callbackReceivedAt: Date.now(),
+      status: isApproved ? PAYMENT_ATTEMPT_STATUS.CALLBACK_PENDING : PAYMENT_ATTEMPT_STATUS.FAILED,
+    })
+
+    if (!isApproved) {
       return {
         status: "failed",
         message: "Payment was not approved by Interswitch.",
         billId: bill._id,
       }
-      }
     }
 
-    const result = await ctx.runMutation(internal.payments.markBillPaid, {
-      billId: bill._id,
-      paymentChannel: BILL_PAYMENT_CHANNEL.CARD,
-      transactionReference: args.txnRef,
-      providerPaymentReference: args.payRef,
-      interswitchRef: args.payRef,
-      paidAmount: bill.totalAmount,
-    })
-
-    if (!result.alreadyPaid) {
-      await sendPaymentConfirmedEvent({
-        patientPhone: result.patientPhone,
-        clinicName: result.clinicName,
-        totalAmount: result.totalAmount,
-      })
+    if (bill.paidAt) {
+      return {
+        status: "success",
+        message: "Payment confirmed.",
+        billId: bill._id,
+      }
     }
 
     return {
       status: "success",
-      message: "Payment confirmed.",
+      message: "Payment callback received. Amelia is waiting for Interswitch webhook confirmation.",
       billId: bill._id,
     }
   },
@@ -899,7 +1038,7 @@ export const finalizeCardPaymentCallbackInternal = internalAction({
 export const confirmOPayPayment = action({
   args: { reference: v.string() },
   handler: async (ctx, args): Promise<OPayConfirmResult> => {
-    const response = await fetch("https://qa.interswitchng.com/collections/api/v1/opay/status", {
+    const response = await fetchWithTimeout("https://qa.interswitchng.com/collections/api/v1/opay/status", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reference: args.reference }),
@@ -921,11 +1060,11 @@ export const confirmOPayPayment = action({
       }
     }
 
-    const bill = (await ctx.runQuery(internal.payments.findBillByTransactionReference, {
+    const paymentAttempt = await ctx.runQuery(internal.payments.getPaymentAttemptByTransactionReference, {
       transactionReference: args.reference,
-    })) as Doc<"bills"> | null
+    })
 
-    if (!bill) {
+    if (!paymentAttempt) {
       throw new ConvexError({
         code: "NOT_FOUND",
         message: "Payment reference could not be matched to a bill.",
@@ -933,12 +1072,21 @@ export const confirmOPayPayment = action({
     }
 
     const result = await ctx.runMutation(internal.payments.markBillPaid, {
-      billId: bill._id,
+      billId: paymentAttempt.billId,
       paymentChannel: BILL_PAYMENT_CHANNEL.OPAY,
       transactionReference: args.reference,
       providerPaymentReference: args.reference,
       interswitchRef: args.reference,
-      paidAmount: bill.totalAmount,
+      paidAmount: paymentAttempt.amountInNaira,
+    })
+
+    await ctx.runMutation(internal.payments.finalizePaymentAttempt, {
+      paymentAttemptId: paymentAttempt._id,
+      providerPaymentReference: args.reference,
+      interswitchRef: args.reference,
+      webhookEvent: "OPAY_STATUS_CONFIRMED",
+      webhookReceivedAt: Date.now(),
+      paidAt: Date.now(),
     })
 
     if (!result.alreadyPaid) {
@@ -952,16 +1100,8 @@ export const confirmOPayPayment = action({
     return {
       status: "success",
       responseCode: data.responseCode,
-      billId: bill._id,
+      billId: paymentAttempt.billId,
     }
-  },
-})
-
-export const findBillByTransactionReference = internalQuery({
-  args: { transactionReference: v.string() },
-  handler: async (ctx, args) => {
-    const bills = await ctx.db.query("bills").collect()
-    return bills.find((bill) => bill.transactionReference === args.transactionReference) ?? null
   },
 })
 
@@ -972,7 +1112,7 @@ export const processInterswitchWebhook = internalAction({
   },
   handler: async (ctx, args) => {
     const secret = requireEnv("INTERSWITCH_WEBHOOK_SECRET")
-    const expectedSignature = await buildWebhookSignature(args.body, secret)
+    const expectedSignature = buildInterswitchWebhookSignature(secret, args.body)
 
     if (!args.signature || args.signature !== expectedSignature) {
       throw new ConvexError({
@@ -983,11 +1123,15 @@ export const processInterswitchWebhook = internalAction({
 
     const payload = JSON.parse(args.body) as {
       event?: string
+      responseCode?: string
+      currency?: string
       data?: {
         transactionReference?: string
         paymentReference?: string
-        channel?: "card" | "opay"
+        channel?: string
         amount?: number
+        responseCode?: string
+        currency?: string
       }
     }
 
@@ -995,21 +1139,43 @@ export const processInterswitchWebhook = internalAction({
       return { ok: true }
     }
 
-    const bill = await ctx.runQuery(internal.payments.findBillByTransactionReference, {
+    const paymentAttempt = await ctx.runQuery(internal.payments.getPaymentAttemptByTransactionReference, {
       transactionReference: payload.data.transactionReference,
     })
 
-    if (!bill) {
+    if (!paymentAttempt) {
       return { ok: true }
     }
 
+    const validation = validateInterswitchWebhookPayload({
+      event: payload.event,
+      responseCode: payload.data.responseCode ?? payload.responseCode,
+      currency: payload.data.currency ?? payload.currency,
+      amountInKobo: normalizeWebhookAmountInKobo(payload.data.amount),
+      expectedAmountInKobo: paymentAttempt.amountInKobo,
+      channel: payload.data.channel,
+    })
+
+    if (!validation.isValid) {
+      return { ok: true, ignored: validation.reason }
+    }
+
     const result = await ctx.runMutation(internal.payments.markBillPaid, {
-      billId: bill._id,
-      paymentChannel: payload.data.channel,
+      billId: paymentAttempt.billId,
+      paymentChannel: validation.normalizedChannel,
       transactionReference: payload.data.transactionReference,
       providerPaymentReference: payload.data.paymentReference,
       interswitchRef: payload.data.paymentReference,
-      paidAmount: payload.data.amount ? Math.round(payload.data.amount / 100) : bill.totalAmount,
+      paidAmount: paymentAttempt.amountInNaira,
+    })
+
+    await ctx.runMutation(internal.payments.finalizePaymentAttempt, {
+      paymentAttemptId: paymentAttempt._id,
+      providerPaymentReference: payload.data.paymentReference,
+      interswitchRef: payload.data.paymentReference,
+      webhookEvent: payload.event,
+      webhookReceivedAt: Date.now(),
+      paidAt: Date.now(),
     })
 
     if (!result.alreadyPaid) {
@@ -1086,7 +1252,7 @@ async function sendWhatsAppTemplateMessage(input: {
   reference: string
   paymentUrl: string
 }) {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${resolveMetaApiBaseUrl()}/${requireEnv("META_PHONE_NUMBER_ID")}/messages`,
     {
       method: "POST",
@@ -1353,8 +1519,12 @@ export const runScheduledPaymentRequestResend = internalAction({
 export const findBillByPaymentRequestMessageId = internalQuery({
   args: { messageId: v.string() },
   handler: async (ctx, args) => {
-    const bills = await ctx.db.query("bills").collect()
-    return bills.find((bill) => bill.paymentRequestMessageId === args.messageId) ?? null
+    return await ctx.db
+      .query("bills")
+      .withIndex("by_payment_request_message_id", (q) =>
+        q.eq("paymentRequestMessageId", args.messageId),
+      )
+      .unique()
   },
 })
 
@@ -1367,8 +1537,12 @@ export const applyMetaPaymentRequestStatus = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const bills = await ctx.db.query("bills").collect()
-    const bill = bills.find((entry) => entry.paymentRequestMessageId === args.messageId) ?? null
+    const bill = await ctx.db
+      .query("bills")
+      .withIndex("by_payment_request_message_id", (q) =>
+        q.eq("paymentRequestMessageId", args.messageId),
+      )
+      .unique()
 
     if (!bill) {
       return null

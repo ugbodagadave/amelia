@@ -366,32 +366,10 @@ export const getById = query({
 export const create = mutation({
   args: patientArgs,
   returns: v.id("patients"),
-  handler: async (ctx, args) => {
-    const { clinic, clerkUserId } = await getCurrentClinic(ctx)
-    const fieldErrors = validatePatientInput({
-      surname: args.surname,
-      otherNames: args.otherNames,
-      dateOfBirth: args.dateOfBirth,
-      sex: args.sex,
-      phone: args.phone,
-      nin: args.nin,
-      paymentType: args.paymentType,
-      hmoName: args.hmoName,
-      enrolleeNhisNo: args.enrolleeNhisNo,
-      hmoAdditionalFields: args.hmoAdditionalFields,
-    })
-
-    if (Object.keys(fieldErrors).length > 0) {
-      throw new ConvexError({
-        code: "VALIDATION_ERROR",
-        message: "Patient details are invalid.",
-        fieldErrors: toConvexFieldErrors(fieldErrors),
-      })
-    }
-
-    return await persistPatientRecord(ctx, clinic, clerkUserId, {
-      ...args,
-      ninVerificationStatus: args.nin?.trim() ? "unverified" : undefined,
+  handler: async () => {
+    throw new ConvexError({
+      code: "UNSUPPORTED",
+      message: "Use registerPatient so HMO registrations run verified NIN checks.",
     })
   },
 })

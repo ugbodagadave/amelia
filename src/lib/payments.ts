@@ -1,4 +1,5 @@
-import { sha512 } from "@noble/hashes/sha2.js"
+import { hmac } from "@noble/hashes/hmac.js"
+import { sha256, sha512 } from "@noble/hashes/sha2.js"
 import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js"
 
 export const BILL_PAYMENT_CHANNEL = {
@@ -34,6 +35,8 @@ export const PAYMENT_CALLBACK_STATUS = {
   FAILED: "failed",
   PENDING: "pending",
 } as const
+
+export const PAYMENT_LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 export const INTERSWITCH_RESPONSE_CODE = {
   SUCCESS: "00",
@@ -108,6 +111,23 @@ export interface MarketplaceNinVerificationResponse {
   }
 }
 
+export interface PublicPaymentLinkAvailabilityInput {
+  billStatus: string
+  createdAt: number
+  tokenIssuedAt?: number | null
+  paymentInitiatedAt?: number | null
+  now?: number
+}
+
+export interface InterswitchWebhookValidationInput {
+  event?: string | null
+  responseCode?: string | null
+  currency?: string | null
+  amountInKobo?: number | null
+  expectedAmountInKobo: number
+  channel?: string | null
+}
+
 export function buildTxnRef(timestamp = Date.now()) {
   return `AM${String(timestamp).slice(-13)}`
 }
@@ -158,8 +178,25 @@ export function isSuccessfulPaymentResponseCode(responseCode: string) {
   return responseCode === INTERSWITCH_RESPONSE_CODE.SUCCESS
 }
 
+export function isCardCallbackResponseApproved(responseCode: string) {
+  return isSuccessfulPaymentResponseCode(responseCode.trim())
+}
+
 export function buildPublicPaymentPath(token: string) {
   return `/pay/${token}`
+}
+
+function getPaymentLinkIssuedAt(input: PublicPaymentLinkAvailabilityInput) {
+  return input.tokenIssuedAt ?? input.paymentInitiatedAt ?? input.createdAt
+}
+
+export function isPublicPaymentLinkAvailable(input: PublicPaymentLinkAvailabilityInput) {
+  if (input.billStatus === "paid" || input.billStatus === "claimed") {
+    return false
+  }
+
+  const issuedAt = getPaymentLinkIssuedAt(input)
+  return issuedAt + PAYMENT_LINK_TTL_MS > (input.now ?? Date.now())
 }
 
 function buildTemplateUrlSuffix(paymentUrl: string) {
@@ -209,6 +246,93 @@ export function parseMetaMessageStatus(status: string): PaymentRequestStatus | n
     default:
       return null
   }
+}
+
+export function canMutateBillAuthorizationCode(status: string) {
+  return status === "awaiting_auth" || status === "auth_confirmed"
+}
+
+function normalizeWebhookChannel(channel?: string | null) {
+  switch ((channel ?? "").trim().toUpperCase()) {
+    case "CARD":
+      return BILL_PAYMENT_CHANNEL.CARD
+    default:
+      return null
+  }
+}
+
+export function validateInterswitchWebhookPayload(input: InterswitchWebhookValidationInput) {
+  if (input.event !== "TRANSACTION.COMPLETED") {
+    return {
+      isValid: false,
+      normalizedChannel: null,
+      reason: "Unsupported Interswitch webhook event.",
+    } as const
+  }
+
+  if (!isSuccessfulPaymentResponseCode((input.responseCode ?? "").trim())) {
+    return {
+      isValid: false,
+      normalizedChannel: null,
+      reason: "Interswitch payment was not approved.",
+    } as const
+  }
+
+  if ((input.currency ?? "").trim().toUpperCase() !== "NGN") {
+    return {
+      isValid: false,
+      normalizedChannel: null,
+      reason: "Unexpected payment currency.",
+    } as const
+  }
+
+  if (input.amountInKobo !== input.expectedAmountInKobo) {
+    return {
+      isValid: false,
+      normalizedChannel: null,
+      reason: "Unexpected payment amount.",
+    } as const
+  }
+
+  const normalizedChannel = normalizeWebhookChannel(input.channel)
+  if (!normalizedChannel) {
+    return {
+      isValid: false,
+      normalizedChannel: null,
+      reason: "Unsupported payment channel.",
+    } as const
+  }
+
+  return {
+    isValid: true,
+    normalizedChannel,
+    reason: null,
+  } as const
+}
+
+function buildHmacHex(secret: string, body: string, algorithm: "sha256" | "sha512") {
+  const hash = algorithm === "sha256" ? sha256 : sha512
+  return bytesToHex(hmac(hash, utf8ToBytes(secret), utf8ToBytes(body)))
+}
+
+export function buildMetaWebhookSignature(secret: string, body: string) {
+  return `sha256=${buildHmacHex(secret, body, "sha256")}`
+}
+
+export function isMetaWebhookSignatureValid(secret: string, body: string, signature?: string | null) {
+  if (!signature?.trim()) {
+    return false
+  }
+
+  return buildMetaWebhookSignature(secret, body) === signature.trim()
+}
+
+export function buildInterswitchWebhookSignature(secret: string, body: string) {
+  return buildHmacHex(secret, body, "sha512")
+}
+
+export function buildMarketplaceTokenExpiresAt(issuedAt: number, expiresInSeconds: number) {
+  return issuedAt + expiresInSeconds * 1000 - 60_000
 }
 
 export function shouldAutoResendPaymentRequest(input: PaymentRequestAutoResendInput) {

@@ -65,13 +65,13 @@ export const getRecentNotifications = query({
   args: {},
   handler: async (ctx) => {
     const { clinic, clerkUserId } = await getCurrentClinic(ctx)
-    const notifications = await ctx.db
+    return await ctx.db
       .query("notifications")
-      .withIndex("by_recipient_and_created_at", (q) => q.eq("recipientClerkUserId", clerkUserId))
+      .withIndex("by_recipient_clinic_and_created_at", (q) =>
+        q.eq("recipientClerkUserId", clerkUserId).eq("clinicId", clinic._id),
+      )
       .order("desc")
       .take(NOTIFICATION_LIMIT)
-
-    return notifications.filter((notification) => notification.clinicId === clinic._id)
   },
 })
 
@@ -81,12 +81,12 @@ export const getUnreadNotificationCount = query({
     const { clinic, clerkUserId } = await getCurrentClinic(ctx)
     const notifications = await ctx.db
       .query("notifications")
-      .withIndex("by_recipient_and_read_state", (q) =>
-        q.eq("recipientClerkUserId", clerkUserId).eq("isRead", false),
+      .withIndex("by_recipient_clinic_and_read_state", (q) =>
+        q.eq("recipientClerkUserId", clerkUserId).eq("clinicId", clinic._id).eq("isRead", false),
       )
       .collect()
 
-    return notifications.filter((notification) => notification.clinicId === clinic._id).length
+    return notifications.length
   },
 })
 
@@ -126,17 +126,13 @@ export const markAllNotificationsRead = mutation({
     const { clinic, clerkUserId } = await getCurrentClinic(ctx)
     const notifications = await ctx.db
       .query("notifications")
-      .withIndex("by_recipient_and_read_state", (q) =>
-        q.eq("recipientClerkUserId", clerkUserId).eq("isRead", false),
+      .withIndex("by_recipient_clinic_and_read_state", (q) =>
+        q.eq("recipientClerkUserId", clerkUserId).eq("clinicId", clinic._id).eq("isRead", false),
       )
       .collect()
 
     const readAt = Date.now()
     for (const notification of notifications) {
-      if (notification.clinicId !== clinic._id) {
-        continue
-      }
-
       await ctx.db.patch(notification._id, {
         isRead: true,
         readAt,

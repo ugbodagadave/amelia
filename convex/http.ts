@@ -5,6 +5,7 @@ import { serve } from "inngest/edge"
 import { internal } from "./_generated/api"
 import { inngest } from "./inngestClient"
 import { inngestFunctions } from "../src/inngest/functions"
+import { isMetaWebhookSignatureValid } from "../src/lib/payments"
 
 const http = httpRouter()
 
@@ -89,6 +90,14 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, req) => {
     const body = await req.text()
+    const signature =
+      req.headers.get("x-hub-signature-256") ?? req.headers.get("X-Hub-Signature-256")
+    const appSecret = process.env.META_APP_SECRET ?? ""
+
+    if (!isMetaWebhookSignatureValid(appSecret, body, signature)) {
+      return new Response("Unauthorized", { status: 401 })
+    }
+
     await ctx.runAction(internal.payments.processMetaWebhookPayload, { body })
     return new Response("ok", { status: 200 })
   }),

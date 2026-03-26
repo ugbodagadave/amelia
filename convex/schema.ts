@@ -46,6 +46,12 @@ const paymentRequestStatusValidator = v.union(
   v.literal("read"),
   v.literal("failed"),
 )
+const paymentAttemptStatusValidator = v.union(
+  v.literal("initiated"),
+  v.literal("callback_pending"),
+  v.literal("paid"),
+  v.literal("failed"),
+)
 
 const ninVerificationStatusValidator = v.union(
   v.literal("unverified"),
@@ -166,7 +172,32 @@ export default defineSchema({
     .index("by_clinic", ["clinicId"])
     .index("by_clinic_and_status", ["clinicId", "status"])
     .index("by_clinic_and_patient", ["clinicId", "patientId"])
-    .index("by_payment_link_token", ["paymentLinkToken"]),
+    .index("by_payment_link_token", ["paymentLinkToken"])
+    .index("by_payment_request_message_id", ["paymentRequestMessageId"]),
+
+  payment_attempts: defineTable({
+    clinicId: v.id("clinics"),
+    billId: v.id("bills"),
+    paymentChannel: paymentChannelValidator,
+    transactionReference: v.string(),
+    paymentLinkToken: v.string(),
+    paymentLink: v.string(),
+    amountInKobo: v.number(),
+    amountInNaira: v.number(),
+    currency: v.string(),
+    status: paymentAttemptStatusValidator,
+    providerPaymentReference: v.optional(v.string()),
+    interswitchRef: v.optional(v.string()),
+    callbackResponseCode: v.optional(v.string()),
+    callbackReceivedAt: v.optional(v.number()),
+    webhookEvent: v.optional(v.string()),
+    webhookReceivedAt: v.optional(v.number()),
+    paidAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_txn_ref", ["transactionReference"])
+    .index("by_bill", ["billId"])
+    .index("by_clinic_and_created_at", ["clinicId", "createdAt"]),
 
   bill_items: defineTable({
     clinicId: v.id("clinics"),
@@ -244,7 +275,9 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_claim_batch", ["claimBatchId"])
-    .index("by_bill", ["billId"]),
+    .index("by_bill", ["billId"])
+    .index("by_clinic", ["clinicId"])
+    .index("by_clinic_and_bill", ["clinicId", "billId"]),
 
   service_catalog: defineTable({
     clinicId: v.id("clinics"),
@@ -319,7 +352,9 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_recipient_and_created_at", ["recipientClerkUserId", "createdAt"])
-    .index("by_recipient_and_read_state", ["recipientClerkUserId", "isRead"]),
+    .index("by_recipient_and_read_state", ["recipientClerkUserId", "isRead"])
+    .index("by_recipient_clinic_and_created_at", ["recipientClerkUserId", "clinicId", "createdAt"])
+    .index("by_recipient_clinic_and_read_state", ["recipientClerkUserId", "clinicId", "isRead"]),
 
   marketplace_banks: defineTable({
     code: v.string(),

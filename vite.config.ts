@@ -1,7 +1,43 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import path from 'path'
+import path from "path"
+import react from "@vitejs/plugin-react"
+import tailwindcss from "@tailwindcss/vite"
+import { defineConfig } from "vite"
+
+function buildManualChunkName(id: string) {
+  if (!id.includes("node_modules")) {
+    return undefined
+  }
+
+  if (
+    id.includes("/react/") ||
+    id.includes("/react-dom/") ||
+    id.includes("/react-router-dom/")
+  ) {
+    return "framework"
+  }
+
+  if (id.includes("/@clerk/") || id.includes("/convex/")) {
+    return "auth-data"
+  }
+
+  if (id.includes("/recharts/")) {
+    return "charts"
+  }
+
+  if (id.includes("/react-day-picker/") || id.includes("/date-fns/")) {
+    return "claims-ui"
+  }
+
+  if (
+    id.includes("/@radix-ui/") ||
+    id.includes("/cmdk/") ||
+    id.includes("/sonner/")
+  ) {
+    return "ui-vendor"
+  }
+
+  return undefined
+}
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -10,7 +46,17 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  build: {
+    reportCompressedSize: false,
+    rolldownOptions: {
+      output: {
+        manualChunks(id) {
+          return buildManualChunkName(id)
+        },
+      },
     },
   },
 })

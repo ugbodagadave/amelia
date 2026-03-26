@@ -9,7 +9,7 @@ import {
   formatBillStatusLabel,
   validateBillInput,
 } from "../src/lib/billing"
-import { PAYMENT_REQUEST_STATUS } from "../src/lib/payments"
+import { canMutateBillAuthorizationCode, PAYMENT_REQUEST_STATUS } from "../src/lib/payments"
 import { buildPatientFullName, maskNin } from "../src/lib/patients"
 import { ROUTES } from "../src/constants/routes"
 import { NOTIFICATION_TYPE } from "../src/lib/notifications"
@@ -375,6 +375,13 @@ export const confirmAuthCode = mutation({
       throw new ConvexError({ code: "INVALID_STATE", message: "Self-pay bills do not use auth codes." })
     }
 
+    if (!canMutateBillAuthorizationCode(bill.status)) {
+      throw new ConvexError({
+        code: "INVALID_STATE",
+        message: "Auth codes cannot be changed after payment or claim submission.",
+      })
+    }
+
     const authorizationCode = args.authorizationCode.trim()
     if (!authorizationCode) {
       throw new ConvexError({
@@ -424,6 +431,13 @@ export const changeAuthCode = mutation({
     const patient = await getPatientForClinic(ctx, clinicId, bill.patientId)
     if (patient.paymentType !== "hmo") {
       throw new ConvexError({ code: "INVALID_STATE", message: "Self-pay bills do not use auth codes." })
+    }
+
+    if (!canMutateBillAuthorizationCode(bill.status)) {
+      throw new ConvexError({
+        code: "INVALID_STATE",
+        message: "Auth codes cannot be changed after payment or claim submission.",
+      })
     }
 
     const authorizationCode = args.authorizationCode.trim()

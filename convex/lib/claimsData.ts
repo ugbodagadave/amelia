@@ -51,16 +51,19 @@ export async function loadClaimRecords(
   billIds: Id<"bills">[],
   options?: { includeClaimed?: boolean },
 ): Promise<ClaimCandidateRecord[]> {
-  const claimBatchBills = await db.query("claim_batch_bills").collect()
-  const claimedBillIds = new Set(claimBatchBills.map((entry) => entry.billId))
   const records: ClaimCandidateRecord[] = []
 
   for (const billId of billIds) {
     const bill = await db.get(billId)
+    const existingClaimBatchBill = await db
+      .query("claim_batch_bills")
+      .withIndex("by_bill", (q) => q.eq("billId", billId))
+      .first()
+
     if (
       !bill ||
       bill.clinicId !== clinicId ||
-      (!options?.includeClaimed && claimedBillIds.has(bill._id))
+      (!options?.includeClaimed && existingClaimBatchBill)
     ) {
       continue
     }
@@ -117,7 +120,10 @@ export async function listClaimCandidateRows(ctx: ClaimsQueryCtx) {
   const [bills, patients, claimBatchBills] = await Promise.all([
     ctx.db.query("bills").withIndex("by_clinic", (q) => q.eq("clinicId", clinicId)).collect(),
     ctx.db.query("patients").withIndex("by_clinic", (q) => q.eq("clinicId", clinicId)).collect(),
-    ctx.db.query("claim_batch_bills").collect(),
+    ctx.db
+      .query("claim_batch_bills")
+      .withIndex("by_clinic", (q) => q.eq("clinicId", clinicId))
+      .collect(),
   ])
 
   const claimedBillIds = new Set(claimBatchBills.map((entry) => entry.billId))

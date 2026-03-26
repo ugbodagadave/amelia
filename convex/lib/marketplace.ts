@@ -1,5 +1,6 @@
 import { ConvexError } from "convex/values"
 import {
+  buildMarketplaceTokenExpiresAt,
   extractMarketplaceAccountName,
   extractMarketplaceBankOptions,
   getMarketplaceNinVerificationResult,
@@ -11,6 +12,12 @@ import {
 import { NIGERIAN_BANK_OPTIONS } from "../../data/nigerian-banks"
 
 const MARKETPLACE_REQUEST_TIMEOUT_MS = 8_000
+let marketplaceTokenCache:
+  | {
+      accessToken: string
+      expiresAt: number
+    }
+  | null = null
 
 async function fetchWithTimeout(input: string, init?: RequestInit) {
   const controller = new AbortController()
@@ -59,9 +66,16 @@ function encodeBasicAuthCredentials(clientId: string, clientSecret: string) {
 }
 
 export async function fetchMarketplaceToken() {
+  if (marketplaceTokenCache && marketplaceTokenCache.expiresAt > Date.now()) {
+    return {
+      access_token: marketplaceTokenCache.accessToken,
+    }
+  }
+
   const clientId = requireEnv("ISW_MARKETPLACE_CLIENT_ID")
   const clientSecret = requireEnv("ISW_MARKETPLACE_CLIENT_SECRET")
   const credentials = encodeBasicAuthCredentials(clientId, clientSecret)
+  const issuedAt = Date.now()
 
   const response = await fetchWithTimeout(`${requireEnv("ISW_MARKETPLACE_BASE_URL")}/passport/oauth/token`, {
     method: "POST",
@@ -79,7 +93,19 @@ export async function fetchMarketplaceToken() {
     })
   }
 
-  return (await response.json()) as { access_token: string }
+  const data = (await response.json()) as {
+    access_token: string
+    expires_in?: number
+  }
+
+  if (data.access_token) {
+    marketplaceTokenCache = {
+      accessToken: data.access_token,
+      expiresAt: buildMarketplaceTokenExpiresAt(issuedAt, data.expires_in ?? 3600),
+    }
+  }
+
+  return { access_token: data.access_token }
 }
 
 function buildMarketplaceHeaders(accessToken: string, contentType?: string) {

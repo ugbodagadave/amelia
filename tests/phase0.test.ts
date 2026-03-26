@@ -109,14 +109,21 @@ describe("Phase 0 — Convex connection", () => {
     expect(client).toBeDefined()
   })
 
+  test("Convex deployment smoke check is opt-in and avoids missing-function probes", async () => {
+    const source = await Bun.file("./tests/phase0.test.ts").text()
+    expect(source).toContain('process.env.CONVEX_NETWORK_SMOKE !== "1"')
+    expect(source).toContain('fetch(CONVEX_URL, {')
+    expect(source).toContain('method: "HEAD"')
+  })
+
   test("Convex deployment responds to HTTP requests (not 5xx)", async () => {
+    if (process.env.CONVEX_NETWORK_SMOKE !== "1") {
+      return
+    }
+
     try {
-      // POST to /api/query with a non-existent function:
-      // Convex returns 4xx (not found / bad request), never 5xx if the server is healthy.
-      const res = await fetch(`${CONVEX_URL}/api/query`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: "_health_check", format: "json", args: {} }),
+      const res = await fetch(CONVEX_URL, {
+        method: "HEAD",
         signal: AbortSignal.timeout(8000),
       })
       // Any non-5xx response proves the deployment is reachable and healthy

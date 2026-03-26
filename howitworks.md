@@ -44,9 +44,15 @@ ClerkProvider (publishable key)
 
 **Convex side (`convex/auth.config.ts`):**
 ```typescript
+const clerkIssuerDomain =
+  process.env.CLERK_JWT_ISSUER_DOMAIN ??
+  process.env.CLERK_ISSUER_URL ??
+  process.env.CLERK_FRONTEND_API_URL ??
+  "https://placeholder.invalid"
+
 export default {
   providers: [{
-    domain: "https://logical-duckling-83.clerk.accounts.dev",
+    domain: clerkIssuerDomain,
     applicationID: "convex"
   }]
 }
@@ -100,7 +106,7 @@ Interswitch redirects the browser to:
 GET /api/payments/interswitch/card-callback?txnref=AM...&ResponseCode=00&...
 ```
 
-Convex HTTP action reads `txnref` and `ResponseCode`. On `ResponseCode === "00"`, calls `finalizeCardPaymentCallbackInternal` mutation → locates bill by `transactionReference` → sets `status: "paid"`, `paidAt`, `paidAmount`. Fires `payment/confirmed` Inngest event. Redirects browser to `/pay/callback/card?status=success&txnref=...`.
+Convex HTTP action reads `txnref` and `ResponseCode`. On `ResponseCode === "00"`, it records the callback against the indexed `payment_attempts` ledger and redirects the browser to `/pay/callback/card?status=success&txnref=...`. The bill is only marked `paid` after the signed Interswitch webhook matches the same immutable payment attempt.
 
 ### TRANSACTION.COMPLETED webhook
 
@@ -501,13 +507,14 @@ export const paymentConfirmed = inngest.createFunction(
 
 **File:** `convex/schema.ts`
 
-12 tables with typed indexes for every access pattern:
+13 tables with typed indexes for every access pattern:
 
 | Table | Purpose | Key indexes |
 |---|---|---|
 | `clinics` | Clinic org data, bank account, NHIA facility code | `by_clerk_user_id` |
 | `patients` | Demographics, NIN, HMO enrollment | `by_clinic`, `by_clinic_and_phone` |
 | `bills` | Admission bills, status, payment tracking | `by_clinic`, `by_clinic_and_status`, `by_payment_link_token` |
+| `payment_attempts` | Immutable payment initiation and reconciliation ledger | `by_txn_ref`, `by_bill` |
 | `bill_items` | Investigation/procedure line items | `by_bill` |
 | `bill_medications` | Medication line items | `by_bill` |
 | `hmo_coverages` | HMO enrollment snapshots + OCR audit trail | `by_patient`, `by_clinic_and_patient` |
@@ -516,7 +523,7 @@ export const paymentConfirmed = inngest.createFunction(
 | `claim_batch_bills` | Bill ↔ batch mapping with per-bill score | `by_claim_batch`, `by_bill` |
 | `tpa_submissions` | TPA submission tracking | `by_clinic_and_status` |
 | `service_catalog` | Clinic service price list | `by_clinic`, `by_clinic_and_name` |
-| `notifications` | In-app notifications (read/unread) | `by_recipient_and_read_state` |
+| `notifications` | In-app notifications (read/unread) | `by_recipient_clinic_and_read_state` |
 
 ---
 

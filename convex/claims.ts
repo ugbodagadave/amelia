@@ -115,6 +115,26 @@ export const createGeneratedClaimBatch = internalMutation({
   handler: async (ctx, args) => {
     const now = Date.now()
     const clinic = await ctx.db.get(args.clinicId)
+
+    for (const billId of args.billIds) {
+      const [bill, existingClaim] = await Promise.all([
+        ctx.db.get(billId),
+        ctx.db
+          .query("claim_batch_bills")
+          .withIndex("by_clinic_and_bill", (q) =>
+            q.eq("clinicId", args.clinicId).eq("billId", billId),
+          )
+          .unique(),
+      ])
+
+      if (!bill || bill.clinicId !== args.clinicId || bill.status === BILL_STATUS.CLAIMED || existingClaim) {
+        throw new ConvexError({
+          code: "CLAIM_ALREADY_EXISTS",
+          message: "A claim batch already exists for one or more selected bills.",
+        })
+      }
+    }
+
     const claimBatchId = await ctx.db.insert("claim_batches", {
       clinicId: args.clinicId,
       hmoName: args.hmoName,

@@ -102,3 +102,31 @@ test("ChartContainer debounces responsive resize work", async () => {
   expect(source).toContain("const CHART_RESIZE_DEBOUNCE_MS = 120")
   expect(source).toContain("debounce={CHART_RESIZE_DEBOUNCE_MS}")
 })
+
+test("App uses lazy route loading with Suspense for heavier pages", async () => {
+  const source = await Bun.file("./src/App.tsx").text()
+  expect(source).toContain('import { Suspense, lazy')
+  expect(source).toContain("const DashboardPage = lazy(")
+  expect(source).toContain("<Suspense")
+  expect(source).not.toContain('import { DashboardPage } from "@/pages/Dashboard"')
+  expect(source).not.toContain('import { ClaimsPage } from "@/pages/Claims"')
+})
+
+test("vite build defines manual chunks and disables compressed-size reporting", async () => {
+  const source = await Bun.file("./vite.config.ts").text()
+  expect(source).toContain("reportCompressedSize: false")
+  expect(source).toContain("manualChunks(id)")
+  expect(source).toContain("framework")
+  expect(source).toContain("auth-data")
+  expect(source).toContain("charts")
+  expect(source).toContain("claims-ui")
+  expect(source).toContain("ui-vendor")
+})
+
+test("ChartContainer uses named recharts imports instead of a namespace import", async () => {
+  const source = await Bun.file("./src/components/ui/chart.tsx").text()
+  expect(source).not.toContain('import * as RechartsPrimitive from "recharts"')
+  expect(source).toContain('import {')
+  expect(source).toContain('from "recharts"')
+  expect(source).toContain("<ResponsiveContainer")
+})
