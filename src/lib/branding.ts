@@ -28,6 +28,34 @@ export function getDocumentTitleForPath(pathname: string) {
     return formatPublicTitle("Sign Up")
   }
 
+  if (pathname === "/revenue-cycle") {
+    return formatPublicTitle("Revenue Cycle")
+  }
+
+  if (pathname === "/hmo-management") {
+    return formatPublicTitle("HMO Management")
+  }
+
+  if (pathname === "/claims-processing") {
+    return formatPublicTitle("Claims Processing")
+  }
+
+  if (pathname === "/privacy-policy") {
+    return formatPublicTitle("Privacy Policy")
+  }
+
+  if (pathname === "/terms-of-service") {
+    return formatPublicTitle("Terms of Service")
+  }
+
+  if (pathname === "/clinical-ethics") {
+    return formatPublicTitle("Clinical Ethics")
+  }
+
+  if (pathname === "/security-whitepaper") {
+    return formatPublicTitle("Security Whitepaper")
+  }
+
   if (pathname === "/pay/callback/card") {
     return formatPublicTitle("Card Payment Result")
   }
@@ -80,5 +108,5 @@ export function getDocumentTitleForPath(pathname: string) {
     return formatAppTitle("Settings")
   }
 
-  return formatAppTitle("Not Found")
+  return formatPublicTitle("Not Found")
 }

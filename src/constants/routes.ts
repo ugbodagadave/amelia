@@ -1,5 +1,12 @@
 export const ROUTES = {
   LANDING: "/",
+  REVENUE_CYCLE: "/revenue-cycle",
+  HMO_MANAGEMENT: "/hmo-management",
+  CLAIMS_PROCESSING: "/claims-processing",
+  PRIVACY_POLICY: "/privacy-policy",
+  TERMS_OF_SERVICE: "/terms-of-service",
+  CLINICAL_ETHICS: "/clinical-ethics",
+  SECURITY_WHITEPAPER: "/security-whitepaper",
   SIGN_IN: "/sign-in",
   SIGN_UP: "/sign-up",
   ONBOARDING: "/onboarding",

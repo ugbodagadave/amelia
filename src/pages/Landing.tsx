@@ -3,7 +3,17 @@ import {
   ChatCircleIcon,
   ChartLineUpIcon,
   ArrowUpRightIcon,
+  ArrowRightIcon,
 } from "@phosphor-icons/react"
+import { Link } from "react-router-dom"
+import { BrandLogo } from "@/components/brand/BrandLogo"
+import { PublicFooter } from "@/components/public/PublicFooter"
+import { ROUTES } from "@/constants/routes"
+import {
+  GOVERNANCE_LINKS,
+  HACKATHON_CREDIT,
+  PLATFORM_LINKS,
+} from "@/lib/publicContent"
 
 const APP_SIGN_UP = "https://app.getamelia.online/sign-up"
 const APP_SIGN_IN = "https://app.getamelia.online/sign-in"
@@ -14,14 +24,9 @@ export function LandingPage() {
       {/* ── Navbar ─────────────────────────────────────────────── */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-lp-surface">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-8 py-3 sm:py-4 flex justify-between items-center">
-          <a href="/">
-            <img
-              src="/brand/amelia-full-logo.svg"
-              alt="Amelia"
-              className="w-28 sm:w-[156px]"
-              height={42}
-            />
-          </a>
+          <Link to={ROUTES.LANDING}>
+            <BrandLogo variant="full" />
+          </Link>
           <div className="flex items-center gap-3 sm:gap-6">
             <a
               href={APP_SIGN_IN}
@@ -44,6 +49,10 @@ export function LandingPage() {
         <section className="relative px-4 sm:px-8 py-12 sm:py-20 overflow-hidden max-w-screen-2xl mx-auto flex flex-col lg:flex-row items-center gap-10 lg:gap-16 lp-amber-glow">
           {/* Left: Headline + CTAs */}
           <div className="flex-1 space-y-6 sm:space-y-8 z-10 w-full">
+            <div className="lp-ribbon">
+              <span className="lp-ribbon-label">Hackathon Build</span>
+              <span className="lp-ribbon-copy">{HACKATHON_CREDIT}</span>
+            </div>
             <h1
               className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-mono font-bold tracking-tighter"
               style={{ lineHeight: 0.9 }}
@@ -57,6 +66,19 @@ export function LandingPage() {
               Nigerian private clinics. Your team focuses on care — we handle
               the numbers with clinical precision.
             </p>
+            <div className="flex flex-wrap gap-3 text-xs font-mono uppercase tracking-widest text-zinc-500">
+              <Link className="transition hover:text-lp-primary" to={ROUTES.REVENUE_CYCLE}>
+                Revenue Cycle
+              </Link>
+              <span className="text-lp-outline">/</span>
+              <Link className="transition hover:text-lp-primary" to={ROUTES.HMO_MANAGEMENT}>
+                HMO Management
+              </Link>
+              <span className="text-lp-outline">/</span>
+              <Link className="transition hover:text-lp-primary" to={ROUTES.CLAIMS_PROCESSING}>
+                Claims Processing
+              </Link>
+            </div>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2 sm:pt-4">
               <a
                 href={APP_SIGN_UP}
@@ -208,129 +230,60 @@ export function LandingPage() {
             </div>
           </div>
         </section>
+
+        <section className="max-w-screen-2xl mx-auto px-4 sm:px-8 pb-16 sm:pb-24">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+            <div className="border border-lp-outline/10 bg-lp-surface-low p-6 sm:p-8">
+              <p className="font-mono text-xs uppercase tracking-widest text-zinc-500">
+                Explore Amelia
+              </p>
+              <h2 className="mt-4 max-w-2xl font-mono text-2xl font-bold uppercase tracking-tight text-lp-on-surface sm:text-4xl">
+                See how Amelia helps clinics collect faster, manage HMOs, and handle claims with more discipline.
+              </h2>
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-400 sm:text-base">
+                Browse the platform pages for billing, HMO workflow, and claims operations,
+                or review the governance pages for privacy, terms, clinical ethics, and
+                security posture.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+              <LinkGroupCard heading="Platform" links={PLATFORM_LINKS} />
+              <LinkGroupCard heading="Governance" links={GOVERNANCE_LINKS} />
+            </div>
+          </div>
+        </section>
       </main>
 
-      {/* ── Footer ──────────────────────────────────────────────── */}
-      <footer className="bg-lp-surface-lowest border-t border-lp-outline/10 pt-12 sm:pt-24 pb-12">
-        <div className="max-w-screen-2xl mx-auto px-4 sm:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12 mb-12 sm:mb-20">
-            {/* Brand & Pitch */}
-            <div className="col-span-2 lg:col-span-1 space-y-6">
-              <img
-                src="/brand/amelia-full-logo.svg"
-                alt="Amelia"
-                width={156}
-                height={42}
-              />
-              <p
-                className="text-zinc-500 font-sans leading-loose uppercase tracking-wide"
-                style={{ fontSize: "11px" }}
-              >
-                Modernizing the financial infrastructure of West African
-                healthcare. Clinical intelligence for the modern era.
-              </p>
-            </div>
+      <PublicFooter />
+    </div>
+  )
+}
 
-            {/* Platform Links */}
-            <div className="space-y-4 sm:space-y-6">
-              <h4
-                className="font-mono font-bold uppercase text-zinc-300 border-b border-lp-outline/20 pb-2"
-                style={{ fontSize: "10px", letterSpacing: "0.2em" }}
-              >
-                Platform
-              </h4>
-              <ul className="space-y-3">
-                {["Revenue Cycle", "HMO Management", "Claims Processing", "Pricing Model"].map(
-                  (item) => (
-                    <li key={item}>
-                      <a
-                        href="#"
-                        className="font-mono text-zinc-500 hover:text-lp-primary transition-colors uppercase tracking-widest"
-                        style={{ fontSize: "11px" }}
-                      >
-                        {item}
-                      </a>
-                    </li>
-                  ),
-                )}
-              </ul>
-            </div>
+type LinkGroupCardProps = {
+  heading: string
+  links: ReadonlyArray<{ label: string; href: string }>
+}
 
-            {/* Governance */}
-            <div className="space-y-4 sm:space-y-6 text-right">
-              <h4
-                className="font-mono font-bold uppercase text-zinc-300 border-b border-lp-outline/20 pb-2"
-                style={{ fontSize: "10px", letterSpacing: "0.2em" }}
-              >
-                Governance
-              </h4>
-              <ul className="space-y-3">
-                {["Privacy Policy", "Terms of Service", "Clinical Ethics", "Security Whitepaper"].map(
-                  (item) => (
-                    <li key={item}>
-                      <a
-                        href="#"
-                        className="font-mono text-zinc-500 hover:text-lp-primary transition-colors uppercase tracking-widest"
-                        style={{ fontSize: "11px" }}
-                      >
-                        {item}
-                      </a>
-                    </li>
-                  ),
-                )}
-              </ul>
-            </div>
-
-            {/* Founder's Office CTA */}
-            <div className="col-span-2 md:col-span-1 lg:col-span-1">
-              <div className="p-6 bg-lp-surface-low border border-lp-outline/10 rounded-sm relative overflow-hidden group">
-                <div className="relative z-10 space-y-4">
-                  <h4
-                    className="font-mono font-bold uppercase tracking-widest text-lp-primary"
-                    style={{ fontSize: "10px" }}
-                  >
-                    Founder's Office
-                  </h4>
-                  <p
-                    className="text-zinc-500 font-mono leading-relaxed uppercase"
-                    style={{ fontSize: "10px" }}
-                  >
-                    Direct access for clinic owners and hospital directors.
-                  </p>
-                  <a
-                    href="mailto:dave@getamelia.online"
-                    className="block w-full bg-lp-primary text-lp-on-primary py-3 px-4 font-mono font-bold uppercase text-center hover:brightness-110 transition-all active:scale-95"
-                    style={{ fontSize: "10px", letterSpacing: "0.15em" }}
-                  >
-                    Contact the Founder
-                  </a>
-                </div>
-                <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-lp-primary/5 rounded-full blur-xl group-hover:scale-150 transition-transform" />
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom status bar */}
-          <div className="pt-8 sm:pt-12 border-t border-lp-outline/10 flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-6">
-            <div className="flex items-center gap-4">
-              <span className="w-2 h-2 rounded-full bg-lp-secondary animate-pulse" />
-              <p
-                className="font-mono uppercase text-zinc-600"
-                style={{ fontSize: "9px", letterSpacing: "0.3em" }}
-              >
-                Operational: All nodes online
-              </p>
-            </div>
-            <p
-              className="font-mono uppercase text-zinc-700 text-center sm:text-right"
-              style={{ fontSize: "9px", letterSpacing: "0.2em" }}
-            >
-              © 2026 Amelia Clinical Intelligence. Nigerian Healthcare Authority.
-              Built for Private Clinics.
-            </p>
-          </div>
-        </div>
-      </footer>
+function LinkGroupCard({ heading, links }: LinkGroupCardProps) {
+  return (
+    <div className="border border-lp-outline/10 bg-lp-surface-low p-6">
+      <p className="font-mono text-xs uppercase tracking-widest text-lp-primary">{heading}</p>
+      <div className="mt-5 flex flex-col gap-4">
+        {links.map((link) => (
+          <Link
+            key={link.href}
+            to={link.href}
+            className="group flex items-center justify-between gap-3 border-b border-lp-outline/10 pb-3 font-mono text-xs uppercase tracking-widest text-zinc-400 transition hover:text-lp-on-surface"
+          >
+            <span>{link.label}</span>
+            <ArrowRightIcon
+              size={14}
+              className="translate-x-0 text-lp-primary transition group-hover:translate-x-1"
+            />
+          </Link>
+        ))}
+      </div>
     </div>
   )
 }

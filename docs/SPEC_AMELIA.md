@@ -1,13 +1,44 @@
 # SPEC_AMELIA.md
 # Amelia — AI-Powered Revenue Cycle Management for Nigerian Private Clinics
 ### Enyata x Interswitch Buildathon 2026 | Tracks: Payment (P) + Health (H) + Emerging Technology
-### Last updated: March 23, 2026
+### Last updated: March 26, 2026
 
 ---
 
 ## 1. THE IDEA IN ONE SENTENCE
 
 Amelia is an AI-powered billing, payment collection, and insurance claims platform for Nigerian private clinics — built on Interswitch's payment infrastructure — that eliminates revenue leakage by digitizing the full patient payment cycle: from bill generation to Interswitch-powered payment collection, to auto-generated, correctly formatted HMO/NHIA claims submissions.
+
+---
+
+## PUBLIC SITE SURFACE
+
+Amelia's public experience now extends beyond the landing page into linked product and governance pages so the hackathon demo has a complete trust and positioning layer, not just a hero section.
+
+### Landing Page Attribution
+
+- The landing hero includes a subtle editorial ribbon reading: **Built at Interswitch Beyond the Rails Hackathon 2026**
+- This marker sits above the hero headline on desktop, tablet, and mobile instead of floating as a pill badge
+- Alternative directions retained for future iterations: **Corner Ledger** and **Status Ticker**
+
+### Product Pages
+
+- **Revenue Cycle** — explains how Amelia reduces revenue leakage from structured billing through collection and reconciliation
+- **HMO Management** — explains authorization tracking, enrollee context, and insurer-facing workflow discipline
+- **Claims Processing** — explains claim readiness, completeness, and submission tracking for Nigerian private clinics
+
+### Governance Pages
+
+- **Privacy Policy** — covers clinic, patient, billing, and claims-related data handling in product terms
+- **Terms of Service** — defines clinic responsibility, acceptable use, and service boundaries
+- **Clinical Ethics** — states Amelia's stance on clinician primacy, patient dignity, and responsible automation
+- **Security Whitepaper** — summarizes Amelia's access control, payment boundary, and data-handling posture
+
+### Content Direction
+
+- Product pages should read like operator-facing explanations for clinic owners and judges
+- Governance pages should feel credible and trust-building without pretending to be final legal counsel or formal certification
+- All copy should stay specific to Amelia's core mission: AI-powered revenue cycle management for Nigerian private clinics
 
 ---
 

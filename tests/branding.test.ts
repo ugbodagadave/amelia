@@ -43,6 +43,8 @@ describe("Document title helpers", () => {
     const { getDocumentTitleForPath } = await import("../src/lib/branding")
 
     expect(getDocumentTitleForPath("/sign-in")).toBe("Amelia - Sign In")
+    expect(getDocumentTitleForPath("/privacy-policy")).toBe("Amelia - Privacy Policy")
+    expect(getDocumentTitleForPath("/security-whitepaper")).toBe("Amelia - Security Whitepaper")
     expect(getDocumentTitleForPath("/dashboard")).toBe("Amelia | Dashboard")
     expect(getDocumentTitleForPath("/analytics")).toBe("Amelia | Analytics")
     expect(getDocumentTitleForPath("/patients/abc")).toBe("Amelia | Patient Profile")
@@ -55,6 +57,8 @@ describe("Document title helpers", () => {
     const source = await Bun.file("./src/App.tsx").text()
     expect(source).toContain("DocumentTitleManager")
     expect(source).toContain("<DocumentTitleManager />")
+    expect(source).toContain("ScrollToTop")
+    expect(source).toContain("<ScrollToTop />")
   })
 })
 

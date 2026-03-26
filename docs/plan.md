@@ -22,6 +22,20 @@ Before any code is written, confirm the following are in place:
 
 ---
 
+## ✅ Public Site Expansion — Landing, Governance, and Product Pages
+
+**Goal:** Turn the landing page into a complete public information surface for the hackathon by adding attribution, public product explainers, and governance pages.
+
+- ✅ Added a hero-level hackathon ribbon for `Interswitch Beyond the Rails Hackathon 2026`
+- ✅ Added public routes and titles for Revenue Cycle, HMO Management, Claims Processing, Privacy Policy, Terms of Service, Clinical Ethics, and Security Whitepaper
+- ✅ Replaced placeholder footer links with real route-backed public navigation
+- ✅ Added shared public footer/content infrastructure so public pages stay consistent with the landing page
+- ✅ Wrote first-pass content aligned to Amelia's billing, HMO, claims, privacy, ethics, and security positioning
+
+**Tests for this slice:** route constants, public titles, landing/footer link wiring, and hackathon attribution coverage
+
+---
+
 ## ✅ Phase 0 — Project Scaffold & Infrastructure
 
 **Goal:** Working skeleton that compiles, authenticates, and connects to all services. Nothing is built yet — only wired.

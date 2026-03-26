@@ -15,9 +15,11 @@ import { ClaimsPage } from "@/pages/Claims"
 import { AnalyticsPage } from "@/pages/Analytics"
 import { SettingsPage } from "@/pages/Settings"
 import { LandingPage } from "@/pages/Landing"
+import { PublicPage } from "@/pages/PublicPage"
 import { NotFoundPage } from "@/pages/NotFound"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { DocumentTitleManager } from "@/components/brand/DocumentTitleManager"
+import { ScrollToTop } from "@/components/brand/ScrollToTop"
 import { AppLayout } from "@/layouts/AppLayout"
 import { ClinicGate } from "@/components/clinic/ClinicGate"
 import { ROUTES } from "@/constants/routes"
@@ -44,6 +46,7 @@ function App() {
   return (
     <BrowserRouter>
       <DocumentTitleManager />
+      <ScrollToTop />
       <Routes>
         <Route path={ROUTES.SIGN_IN} element={<SignInPage />} />
         <Route path={ROUTES.SIGN_UP} element={<SignUpPage />} />
@@ -51,6 +54,19 @@ function App() {
         <Route path={ROUTES.PAYMENT_LINK} element={<PaymentLinkPage />} />
         <Route path={ROUTES.PAYMENT_CALLBACK_CARD} element={<PaymentCallbackCardPage />} />
         <Route path={ROUTES.PAYMENT_CALLBACK_OPAY} element={<PaymentCallbackOpayPage />} />
+        <Route path={ROUTES.REVENUE_CYCLE} element={<PublicPage pageId="revenueCycle" />} />
+        <Route path={ROUTES.HMO_MANAGEMENT} element={<PublicPage pageId="hmoManagement" />} />
+        <Route
+          path={ROUTES.CLAIMS_PROCESSING}
+          element={<PublicPage pageId="claimsProcessing" />}
+        />
+        <Route path={ROUTES.PRIVACY_POLICY} element={<PublicPage pageId="privacyPolicy" />} />
+        <Route path={ROUTES.TERMS_OF_SERVICE} element={<PublicPage pageId="termsOfService" />} />
+        <Route path={ROUTES.CLINICAL_ETHICS} element={<PublicPage pageId="clinicalEthics" />} />
+        <Route
+          path={ROUTES.SECURITY_WHITEPAPER}
+          element={<PublicPage pageId="securityWhitepaper" />}
+        />
 
         <Route path={ROUTES.DASHBOARD} element={<ProtectedLayout><DashboardPage /></ProtectedLayout>} />
         <Route path={ROUTES.PATIENTS}  element={<ProtectedLayout><PatientsPage /></ProtectedLayout>} />
