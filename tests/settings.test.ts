@@ -56,3 +56,10 @@ test("settings and patient-facing views avoid implementation-facing helper copy"
     "Scores combine hard validation checks with advisory AI warnings when Groq scoring is available.",
   )
 })
+
+test("general settings keeps the settlement bank control full-width and usable", async () => {
+  const source = await Bun.file("./src/components/settings/GeneralClinicSettingsSection.tsx").text()
+
+  expect(source).toContain('<SelectTrigger className="w-full"')
+  expect(source).toContain('placeholder={isLoadingBanks ? "Loading banks..." : "Select bank"}')
+})

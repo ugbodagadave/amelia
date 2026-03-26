@@ -27,6 +27,7 @@ import {
   normalizePhoneForSms,
   parseMetaMessageStatus,
   shouldAutoResendPaymentRequest,
+  extractMarketplaceBankOptions,
   validateBankVerificationInput,
   validatePaymentLinkToken,
 } from "../src/lib/payments"
@@ -384,8 +385,13 @@ export const listBanks = action({
       })
     }
 
-    const data = (await response.json()) as Array<{ name: string; code: string }>
-    return data.sort((left, right) => left.name.localeCompare(right.name))
+    const data = (await response.json()) as {
+      success?: boolean
+      code?: string
+      message?: string
+      data?: Array<{ name?: string; code?: string }>
+    }
+    return extractMarketplaceBankOptions(data)
   },
 })
 

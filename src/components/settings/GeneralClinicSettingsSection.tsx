@@ -353,18 +353,24 @@ export function GeneralClinicSettingsSection() {
                   <FieldLabel>Settlement bank</FieldLabel>
                   <FieldContent>
                     <Select value={formState.bankCode} onValueChange={handleBankCodeChange}>
-                      <SelectTrigger aria-invalid={Boolean(errors.bankCode)}>
+                      <SelectTrigger className="w-full" aria-invalid={Boolean(errors.bankCode)}>
                         <SelectValue
                           placeholder={isLoadingBanks ? "Loading banks..." : "Select bank"}
                         />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectGroup>
-                          {bankOptions.map((bank) => (
-                            <SelectItem key={bank.code} value={bank.code}>
-                              {bank.name}
+                          {bankOptions.length > 0 ? (
+                            bankOptions.map((bank) => (
+                              <SelectItem key={bank.code} value={bank.code}>
+                                {bank.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-banks" disabled>
+                              {isLoadingBanks ? "Loading banks..." : "No banks available"}
                             </SelectItem>
-                          ))}
+                          )}
                         </SelectGroup>
                       </SelectContent>
                     </Select>

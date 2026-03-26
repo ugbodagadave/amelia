@@ -388,18 +388,28 @@ export function ClinicOnboardingPage() {
                       setErrors((current) => ({ ...current, bankCode: undefined, accountName: undefined }))
                     }}
                   >
-                    <SelectTrigger id="clinic-bank" aria-invalid={Boolean(errors.bankCode)}>
+                    <SelectTrigger
+                      id="clinic-bank"
+                      className="w-full"
+                      aria-invalid={Boolean(errors.bankCode)}
+                    >
                       <SelectValue
                         placeholder={isLoadingBanks ? "Loading banks..." : "Select payout bank"}
                       />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        {bankOptions.map((bank) => (
-                          <SelectItem key={bank.code} value={bank.code}>
-                            {bank.name}
+                        {bankOptions.length > 0 ? (
+                          bankOptions.map((bank) => (
+                            <SelectItem key={bank.code} value={bank.code}>
+                              {bank.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no-banks" disabled>
+                            {isLoadingBanks ? "Loading banks..." : "No banks available"}
                           </SelectItem>
-                        ))}
+                        )}
                       </SelectGroup>
                     </SelectContent>
                   </Select>

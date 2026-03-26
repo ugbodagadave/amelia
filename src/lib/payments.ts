@@ -73,6 +73,21 @@ export interface BankVerificationInput {
   bankCode: string
 }
 
+export interface MarketplaceBankOption {
+  name: string
+  code: string
+}
+
+export interface MarketplaceBankListResponse {
+  success?: boolean
+  code?: string
+  message?: string
+  data?: Array<{
+    name?: string
+    code?: string
+  }>
+}
+
 export function buildTxnRef(timestamp = Date.now()) {
   return `AM${String(timestamp).slice(-13)}`
 }
@@ -210,4 +225,22 @@ export function validateBankVerificationInput(input: BankVerificationInput) {
   }
 
   return errors
+}
+
+export function extractMarketplaceBankOptions(
+  response: MarketplaceBankListResponse,
+): MarketplaceBankOption[] {
+  return (response.data ?? [])
+    .filter(
+      (bank): bank is MarketplaceBankOption =>
+        typeof bank?.name === "string" &&
+        bank.name.trim().length > 0 &&
+        typeof bank.code === "string" &&
+        bank.code.trim().length > 0,
+    )
+    .map((bank) => ({
+      name: bank.name.trim(),
+      code: bank.code.trim(),
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name))
 }

@@ -5,6 +5,7 @@ import {
   PAYMENT_CALLBACK_STATUS,
   PAYMENT_REQUEST_CHANNEL,
   PAYMENT_REQUEST_STATUS,
+  extractMarketplaceBankOptions,
   buildPublicPaymentPath,
   buildTxnRef,
   buildWebCheckoutHash,
@@ -73,6 +74,23 @@ describe("Phase 4 - Payment helpers", () => {
       accountNumber: "Account number is required.",
       bankCode: "Select a bank.",
     })
+  })
+
+  test("extracts and sorts bank options from the marketplace bank-list envelope", () => {
+    expect(
+      extractMarketplaceBankOptions({
+        success: true,
+        code: "200",
+        message: "request processed successfully",
+        data: [
+          { name: "Zenith Bank", code: "057" },
+          { name: "Access Bank", code: "044" },
+        ],
+      }),
+    ).toEqual([
+      { name: "Access Bank", code: "044" },
+      { name: "Zenith Bank", code: "057" },
+    ])
   })
 })
 
