@@ -54,12 +54,12 @@ export function LandingPage() {
               <span className="lp-ribbon-copy">{HACKATHON_CREDIT}</span>
             </div>
             <h1
-              className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-mono font-bold tracking-tighter"
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-mono font-bold tracking-tighter"
               style={{ lineHeight: 0.9 }}
             >
-              <span className="text-lp-on-surface">Revenue,</span>
+              <span className="text-lp-on-surface">Private Clinic Billing,</span>
               <br />
-              <span className="text-lp-primary-dim">Reclaimed.</span>
+              <span className="text-lp-primary-dim">Done Properly.</span>
             </h1>
             <p className="max-w-xl text-base sm:text-lg text-zinc-400 font-light leading-relaxed">
               Amelia handles billing, HMO claims, and payment collection for
@@ -240,11 +240,6 @@ export function LandingPage() {
               <h2 className="mt-4 max-w-2xl font-mono text-2xl font-bold uppercase tracking-tight text-lp-on-surface sm:text-4xl">
                 See how Amelia helps clinics collect faster, manage HMOs, and handle claims with more discipline.
               </h2>
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-400 sm:text-base">
-                Browse the platform pages for billing, HMO workflow, and claims operations,
-                or review the governance pages for privacy, terms, clinical ethics, and
-                security posture.
-              </p>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">

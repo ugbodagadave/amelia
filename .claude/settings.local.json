@@ -18,7 +18,8 @@
       "Bash(bunx tsc:*)",
       "Bash(grep:*)",
       "Bash(wc:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(git rm:*)"
     ]
   }
 }
