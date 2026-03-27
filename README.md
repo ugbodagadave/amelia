@@ -70,6 +70,14 @@ Live: **[getamelia.online](https://getamelia.online)**
 
 ---
 
+## Reviewing / Judging
+
+**[testing_guide.md](./testing_guide.md)** — step-by-step guide for judges: sign-in credentials, pre-seeded workspace overview, and all test scenarios with expected outcomes.
+
+Live app: **[app.getamelia.online](https://app.getamelia.online)**
+
+---
+
 ## How It's Built
 
 For the full system walkthrough — auth, payments, claims, OCR, messaging, and background jobs — see **[howitworks.md](./howitworks.md)**.

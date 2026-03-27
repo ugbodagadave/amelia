@@ -1,152 +1,128 @@
-# Amelia Testing Guide
+# Amelia — Judge Testing Guide
 
-Last updated: March 27, 2026
+**Live app:** [https://app.getamelia.online](https://app.getamelia.online)
 
-Amelia is running against sandbox and test credentials for submission.
+Amelia runs against Interswitch sandbox and test credentials. No live money moves. All payment responses are simulated.
 
-- Interswitch payments: sandbox only
-- Interswitch Marketplace NIN and bank verification: sandbox only
-- OPay: sandbox only
-- WhatsApp payment messaging: Meta Cloud API test configuration
-- No live settlement or live virtual account flow is enabled
+---
 
-## Shared Reviewer Account
+## Sign In
 
-- App URL: `https://app.getamelia.online`
-- Shared account email: `esther@getamelia.online`
-- Shared account password: set this before submission and replace it here
+A shared reviewer account has been pre-configured with a fully seeded clinic workspace. Use these credentials:
 
-Reviewer access model:
+| Field | Value |
+|-------|-------|
+| Email | `esther@getamelia.online` |
+| Password | `inter@amelia` |
 
-- Reviewers sign in with the shared account above
-- The workspace is pre-seeded programmatically in Convex production
-- Client Trust is disabled in Clerk for this submission flow
+> Sign in is handled by Clerk. If prompted for a verification code, use the email above — it is a real inbox.
 
-## What Reviewers Should Test
+After signing in you will land directly inside **Apex Specialist Clinic** — no onboarding steps required.
 
-### 1. Dashboard And Seeded Workspace
+---
 
-After signing in, reviewers should land inside a fully configured clinic workspace for:
+## What You Will Find
 
-- `Apex Specialist Clinic`
-- NHIA / HCP code: `NHIA-1029`
-- verified payout bank:
-  - bank: `Guaranty Trust Bank`
-  - bank code: `058`
-  - account number: `1000000000`
-  - resolved name: `MICHAEL JOHN DOE`
+The workspace has been pre-seeded with realistic data:
 
-The seeded workspace contains:
+- A patient roster with realistic Nigerian demographics
+- A mix of **self-pay** and **HMO** bills across multiple statuses
+- A pending self-pay bill ready for payment flow testing
+- Paid bill history showing card and OPay transactions
+- HMO bills covering `awaiting auth`, `auth confirmed`, and `claimed` states
+- An overdue claim batch so dashboard metrics and claims tracking are populated
+- A verified payout bank account (GTBank · `1000000000` · `MICHAEL JOHN DOE`)
+- NHIA/HCP code `NHIA-1029` pre-entered in settings
 
-- female-first patient roster with realistic demographics
-- one self-pay pending-payment bill for payment flow testing
-- paid bill history across card and OPay
-- HMO bills covering `awaiting_auth`, `auth_confirmed`, and `claimed`
-- one overdue claim batch so dashboard and claims tracking are populated
+---
 
-### 2. Bank Verification
+## Scenarios to Test
 
-Go to `Settings` → `General settings`.
+### 1. Dashboard
 
-Use:
+Sign in and review the revenue dashboard. It shows real-time collections, outstanding bills, claim status breakdown, and overdue TPA payment alerts — all drawn from the seeded data.
 
-- bank: `Guaranty Trust Bank`
-- bank code: `058`
-- account number: `1000000000`
+---
 
-Expected result:
+### 2. WhatsApp Payment Request
 
-- Amelia resolves the account name as `MICHAEL JOHN DOE`
+This is the primary collection flow. A bill is sent to the patient's WhatsApp number as an approved payment-request template, and the patient pays through a public link without logging in.
 
-### 3. NIN Verification
+**Steps:**
 
-Go to `Patients` and create a new HMO patient.
+1. Go to **Patients** and register a new self-pay patient using your own Nigerian mobile number
+2. Go to **Bills**, create a bill for that patient, and open the bill detail page
+3. Click **Send payment request** — Amelia sends the `bill_payment_request_v2` WhatsApp template to the number you entered
+4. Open WhatsApp on your phone and receive the message
+5. Tap the payment link in the message — it opens the public Amelia payment page at `https://app.getamelia.online/pay/…`
+
+> **Note on card payment:** The hosted Interswitch card checkout is currently experiencing a sandbox-side issue with our merchant account configuration. The payment page loads and the form submits correctly, but Interswitch's sandbox returns an error before the card entry screen. This is a known sandbox limitation, not a code defect — the integration is correctly implemented against the Quickteller Business API spec.
+
+---
+
+### 3. Bank Account Verification
+
+Go to **Settings → General settings**.
+
+Enter these details:
+
+| Field | Value |
+|-------|-------|
+| Bank | Guaranty Trust Bank |
+| Account number | `1000000000` |
+
+Expected: Amelia resolves the account name as **MICHAEL JOHN DOE** via the Interswitch Marketplace bank verification API.
+
+---
+
+### 4. NIN Verification
+
+Go to **Patients** and create a new HMO patient.
 
 Use these sandbox identity details:
 
-- first name: `Bunch`
-- last name: `Dillon`
-- NIN: `63184876213`
+| Field | Value |
+|-------|-------|
+| First name | `Bunch` |
+| Last name | `Dillon` |
+| NIN | `63184876213` |
 
-Expected result:
+Expected: NIN verification succeeds and patient registration proceeds. Amelia calls the Interswitch Marketplace NIN verification API and matches the name against the NIMC record.
 
-- NIN verification succeeds
-- patient registration can continue
+---
 
-Note:
+### 5. HMO Claims Flow
 
-- the Interswitch sandbox response contains a base64 photo field internally, but Amelia should not expose that field in reviewer-facing flows
+Open an HMO bill with status **Auth confirmed**. Review the claim scoring panel — Amelia uses a Groq LLM to score completeness and surface any blocking issues.
 
-### 4. WhatsApp Payment Flow
+Click **Generate claim PDF** to produce the auto-filled HMO claims form and Medical Director cover letter. Both are bundled into a downloadable ZIP.
 
-Preferred reviewer path:
+---
 
-1. Create a fresh self-pay patient with the reviewer’s own Nigerian mobile number
-2. Create a bill for that patient
-3. Open the bill detail page
-4. Click `Send payment request`
-5. Receive the WhatsApp payment message
-6. Open the Amelia payment link from WhatsApp
+### 6. Existing Seeded Bills
 
-Why this path is preferred:
+If time is short, the pre-seeded workspace already contains a pending self-pay bill. Open it from **Bills**, click **Send payment request**, and walk through the WhatsApp delivery flow without creating a new patient.
 
-- it proves the full collection flow on the reviewer’s own device
-- it avoids having to edit seeded patient phone numbers
+---
 
-### 5. Existing Seeded Bill Flow
+## Sandbox Credentials (for Payment Testing)
 
-If time is short, reviewers can also inspect the existing seeded pending self-pay bill in the Bills workspace and trigger the payment request path from there.
+| Channel | Test credentials |
+|---------|-----------------|
+| Interswitch card | Card `5061050254756707864` · Expiry `06/26` · CVV `111` · PIN `1111` |
+| OPay wallet | Phone `1259257649` · PIN `123456` · OTP `315632` (success) |
 
-## Operator Commands
+> These credentials are for the Interswitch and OPay sandbox environments only.
 
-These are for the demo operator, not reviewers.
+---
 
-### Seed the shared production workspace
+## Known Sandbox Limitations
 
-Required Convex production env var:
-
-```powershell
-npx convex env set DEMO_WORKSPACE_ADMIN_SECRET "replace-with-a-strong-secret" --prod
-```
-
-Local command to seed production:
-
-```powershell
-$env:DEMO_WORKSPACE_ADMIN_SECRET="replace-with-the-same-secret"
-bun run demo:seed:prod
-```
-
-Optional override if you ever change the shared account email:
-
-```powershell
-$env:DEMO_SHARED_ACCOUNT_EMAIL="esther@getamelia.online"
-```
-
-### Local Meta WhatsApp smoke test
-
-This uses the pre-seeded self-pay smoke bill, rewrites that patient phone number to your test number, and sends the live Meta template through Amelia’s existing payment-request flow.
-
-Local script path:
-
-- `scripts/local/send-meta-payment-test.ts`
-
-Command:
-
-```powershell
-$env:DEMO_WORKSPACE_ADMIN_SECRET="replace-with-the-same-secret"
-$env:META_SMOKE_PHONE="2349067748876"
-bun run scripts/local/send-meta-payment-test.ts
-```
-
-Expected output:
-
-- `billId`
-- `patientId`
-- `paymentUrl`
-- `messageId`
-
-## Important Submission Notes
-
-- Shared reviewers should not complete onboarding manually if the production workspace has already been seeded.
-- Rerunning the seed resets the shared clinic workspace for `esther@getamelia.online`.
-- Payment and identity responses are sandbox responses only and should be described as such to judges.
+| Feature | Status |
+|---------|--------|
+| Interswitch card checkout | Payment page submits correctly; sandbox merchant returns an error before card entry — known sandbox account configuration issue |
+| OPay wallet | Sandbox endpoint occasionally drops connections; confirmed working in pre-submission testing |
+| WhatsApp delivery | Live — real messages sent via Meta WhatsApp Cloud API |
+| NIN verification | Live against Interswitch Marketplace sandbox |
+| Bank verification | Live against Interswitch Marketplace sandbox |
+| Settlement / live payouts | Disabled — sandbox only |

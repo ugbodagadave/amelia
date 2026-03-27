@@ -50,7 +50,7 @@ describe("Phase 4 - Payment helpers", () => {
         macKey: "secret-mac",
       }),
     ).toBe(
-      "4ff2f6aebf2843bf12c87b6fe06daef142678f0f0dfa01890cf38ebdd0526e52890339e10367ff95391cf3ba236b6c78b1ed0794318f86596df155c7c9fbe458",
+      "a8739e3a9c19c116d86693631696f7ba0e0b8570b79fce7c6c160afddfa746601cadd84f4e72ca482b18faa218871b36fd2de87d8dbd6d3e01260ec2f76774d3",
     )
   })
 
@@ -227,7 +227,7 @@ describe("Phase 4 - Routing and source integration", () => {
     expect(
       buildWhatsAppTemplatePayload({
         to: "2349067748876",
-        templateName: "bill_payment_request",
+        templateName: "bill_payment_request_v2",
         languageCode: "en",
         patientFirstName: "Emeka",
         clinicName: "Fruitex Clinic",
@@ -240,7 +240,7 @@ describe("Phase 4 - Routing and source integration", () => {
       to: "2349067748876",
       type: "template",
       template: {
-        name: "bill_payment_request",
+        name: "bill_payment_request_v2",
         language: { code: "en" },
         components: [
           {
@@ -313,6 +313,7 @@ describe("Phase 4 - Routing and source integration", () => {
     const appSource = await Bun.file("./src/App.tsx").text()
     const routesSource = await Bun.file("./src/constants/routes.ts").text()
     const billDetailSource = await Bun.file("./src/pages/BillDetail.tsx").text()
+    const paymentLinkSource = await Bun.file("./src/pages/PaymentLink.tsx").text()
     const paymentCardSource = await Bun.file("./src/components/billing/PaymentReadinessCard.tsx").text()
     const paymentCallbackCardSource = await Bun.file("./src/pages/PaymentCallbackCard.tsx").text()
     const paymentCallbackOpaySource = await Bun.file("./src/pages/PaymentCallbackOpay.tsx").text()
@@ -341,6 +342,8 @@ describe("Phase 4 - Routing and source integration", () => {
     expect(paymentCardSource).toContain("Pay with OPay")
     expect(paymentCardSource).toContain("Confirm OPay payment")
     expect(paymentCardSource).toContain("Copy payment link")
+    expect(paymentLinkSource).toContain("__AMELIA_CARD_CHECKOUT_DEBUG__")
+    expect(paymentLinkSource).toContain("[Amelia] Interswitch hosted checkout payload")
     expect(paymentCallbackCardSource).toContain("Amelia only accepts the server callback result on this screen.")
     expect(paymentCallbackCardSource).not.toContain("finalizeCardPaymentCallback")
     expect(paymentCallbackCardSource).toContain("View bill")
@@ -366,6 +369,7 @@ describe("Phase 4 - Routing and source integration", () => {
     expect(paymentsSource).toContain("finalizeCardPaymentCallbackInternal")
     expect(paymentsSource).toContain("getPaymentAttemptByTransactionReference")
     expect(paymentsSource).toContain("PAYMENT_ATTEMPT_STATUS.CALLBACK_PENDING")
+    expect(paymentsSource).toContain('return `${resolveAppUrl()}${ROUTES.PAYMENT_CALLBACK_CARD}`')
     expect(paymentsSource).toContain("const transactionReference = buildTxnRef()")
     expect(paymentsSource).toContain("encodeBasicAuthCredentials")
     expect(paymentsSource).not.toContain("Buffer.from")

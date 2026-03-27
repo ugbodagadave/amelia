@@ -30,6 +30,19 @@ export function PaymentLinkPage() {
   const [shouldAutoConfirmOpay, setShouldAutoConfirmOpay] = useState(false)
 
   const submitHostedPayment = (endpoint: string, fields: Record<string, string>) => {
+    const debugPayload = {
+      endpoint,
+      fields,
+      generatedAt: new Date().toISOString(),
+    }
+
+    console.group("[Amelia] Interswitch hosted checkout payload")
+    console.table(fields)
+    console.log(debugPayload)
+    console.groupEnd()
+    ;(window as typeof window & { __AMELIA_CARD_CHECKOUT_DEBUG__?: typeof debugPayload }).__AMELIA_CARD_CHECKOUT_DEBUG__ =
+      debugPayload
+
     const form = document.createElement("form")
     form.method = "POST"
     form.action = endpoint

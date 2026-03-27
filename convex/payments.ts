@@ -165,22 +165,6 @@ function resolveMetaApiBaseUrl() {
   return `https://graph.facebook.com/${resolveMetaGraphApiVersion()}`
 }
 
-function resolveConvexSiteUrl() {
-  const configuredUrl =
-    process.env.INTERSWITCH_WEBHOOK_URL ??
-    process.env.VITE_CONVEX_SITE_URL ??
-    process.env.CONVEX_SITE_URL
-
-  if (!configuredUrl) {
-    throw new ConvexError({
-      code: "ENV_MISSING",
-      message: "INTERSWITCH_WEBHOOK_URL is not configured for this deployment.",
-    })
-  }
-
-  return configuredUrl.replace(/\/api\/webhooks\/interswitch\/?$/, "").replace(/\/$/, "")
-}
-
 function buildClinicPaymentLink(token: string) {
   return `${resolveAppUrl()}${buildPublicPaymentPath(token)}`
 }
@@ -196,7 +180,7 @@ function extractPatientFirstName(patientName: string) {
 }
 
 function buildCardCallbackUrl() {
-  return `${resolveConvexSiteUrl()}/api/payments/interswitch/card-callback`
+  return `${resolveAppUrl()}${ROUTES.PAYMENT_CALLBACK_CARD}`
 }
 
 function ensureBillIsReadyForCollection(bill: {
@@ -608,12 +592,10 @@ async function initiatePaymentForBill(
       fields: {
         txn_ref: paymentSession.transactionReference,
         merchant_code: merchantCode,
-        product_id: payItemId,
         pay_item_id: payItemId,
         amount: String(paymentSession.amountInKobo),
         site_redirect_url: cardCallbackUrl,
         currency: "566",
-        isswitch: "1",
         hash: buildWebCheckoutHash({
           txnRef: paymentSession.transactionReference,
           merchantCode,
@@ -1263,7 +1245,7 @@ async function sendWhatsAppTemplateMessage(input: {
       body: JSON.stringify(
         buildWhatsAppTemplatePayload({
           to: input.to,
-          templateName: "bill_payment_request",
+          templateName: "bill_payment_request_v2",
           languageCode: "en",
           patientFirstName: input.patientFirstName,
           clinicName: input.clinicName,
