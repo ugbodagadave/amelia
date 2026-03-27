@@ -1,6 +1,4 @@
-import type { Appearance } from "@clerk/clerk-react"
-
-export const DARK_CLERK_APPEARANCE: Appearance = {
+export const DARK_CLERK_APPEARANCE = {
   variables: {
     colorBackground: "#1c1c1a",       // --lp-surface-low
     colorText: "#e5e2de",             // --lp-on-surface
