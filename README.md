@@ -72,7 +72,9 @@ Live: **[getamelia.online](https://getamelia.online)**
 
 ## How It's Built
 
-For a detailed technical explanation of every integration — request shapes, auth mechanisms, webhook validation, data flows, and the claim generation pipeline — see **[howitworks.md](./howitworks.md)**.
+For the full system walkthrough — auth, payments, claims, OCR, messaging, and background jobs — see **[howitworks.md](./howitworks.md)**.
+
+For the provider-specific deep dive into Quickteller card checkout, OPay, Marketplace OAuth, bank verification, NIN verification, webhook handling, and the payment-attempt ledger, see **[interswitch.md](./interswitch.md)**.
 
 ---
 

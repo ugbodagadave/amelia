@@ -22,14 +22,15 @@ describe("Brand assets and browser metadata", () => {
     expect(brandingSource).toContain("/brand/amelia-logo-mark.svg")
   })
 
-  test("sign-in and sign-up pages use Amelia logo assets instead of text-only branding", async () => {
+  test("sign-in and sign-up pages use the shared auth layout with Amelia logo assets", async () => {
     const signInSource = await Bun.file("./src/pages/SignIn.tsx").text()
     const signUpSource = await Bun.file("./src/pages/SignUp.tsx").text()
+    const authLayoutSource = await Bun.file("./src/components/auth/AuthLayout.tsx").text()
 
-    expect(signInSource).toContain('<BrandLogo variant="full" />')
-    expect(signInSource).toContain('<BrandLogo variant="mark" />')
-    expect(signUpSource).toContain('<BrandLogo variant="full" />')
-    expect(signUpSource).toContain('<BrandLogo variant="mark" />')
+    expect(signInSource).toContain("<AuthLayout>")
+    expect(signUpSource).toContain("<AuthLayout>")
+    expect(authLayoutSource).toContain('<BrandLogo variant="full" />')
+    expect(authLayoutSource).toContain('<BrandLogo variant="mark" />')
   })
 })
 

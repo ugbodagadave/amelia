@@ -1,6 +1,8 @@
 # How Amelia Works — Technical Integration Reference
 
-This document describes the technical implementation of every integration in Amelia: request shapes, auth mechanisms, data flows, and internal wiring. Intended for engineers reviewing the codebase.
+This document explains how Amelia is wired end to end: auth, billing, payment collection, claims generation, OCR, messaging, and background jobs. It is intended for engineers reviewing the current codebase.
+
+For a provider-specific deep dive into every Interswitch touchpoint used by Amelia, see [interswitch.md](./interswitch.md).
 
 ---
 
@@ -106,7 +108,11 @@ Interswitch redirects the browser to:
 GET /api/payments/interswitch/card-callback?txnref=AM...&ResponseCode=00&...
 ```
 
-Convex HTTP action reads `txnref` and `ResponseCode`. On `ResponseCode === "00"`, it records the callback against the indexed `payment_attempts` ledger and redirects the browser to `/pay/callback/card?status=success&txnref=...`. The bill is only marked `paid` after the signed Interswitch webhook matches the same immutable payment attempt.
+Convex HTTP action reads `txnref`, `payRef`, and `ResponseCode`. The callback path does **not** mark the bill paid by itself. It only records callback metadata against the indexed `payment_attempts` ledger and redirects the browser to `/pay/callback/card?...`.
+
+Current rule:
+- Browser callback is treated as a user-facing status handoff only
+- Bill settlement happens only after the signed Interswitch webhook validates the immutable payment attempt, expected amount, currency, channel, and success code
 
 ### TRANSACTION.COMPLETED webhook
 
@@ -138,15 +144,23 @@ if (signature !== expected) return new Response("Unauthorized", { status: 401 })
 }
 ```
 
-Handler: `processInterswitchWebhook` mutation matches `transactionReference` to a bill, calls `markBillPaid`.
+Handler: `processInterswitchWebhook` validates the signature and payload semantics, loads the immutable payment attempt by indexed `transactionReference`, then calls `markBillPaid` only if the event is acceptable.
+
+Validation enforced in code:
+- `event === "TRANSACTION.COMPLETED"`
+- `responseCode === "00"`
+- `currency === "NGN"`
+- `amount === expectedAmountInKobo`
+- `channel` normalizes to a supported Amelia payment channel
+- payment attempt exists and is still pending
 
 ---
 
 ## 4. Interswitch Marketplace — Identity Verification
 
-Used during clinic onboarding to verify the clinic's bank account.
+Used during clinic onboarding/settings to verify the clinic's settlement bank account, and during HMO patient registration to verify NIN before patient creation.
 
-**OAuth token (`convex/payments.ts`):**
+**OAuth token (`convex/lib/marketplace.ts`):**
 ```
 POST https://qa.interswitchng.com/passport/oauth/token
 Authorization: Basic base64(CLIENT_ID:CLIENT_SECRET)
@@ -155,14 +169,14 @@ Content-Type: application/x-www-form-urlencoded
 grant_type=client_credentials
 ```
 Response: `{ access_token, expires_in: 3600 }`
-Token is cached with: `expiresAt = Date.now() + (expires_in * 1000) - 60_000`
+Token is cached in-process with: `expiresAt = issuedAt + (expires_in * 1000) - 60_000`
 
 **Bank list:**
 ```
 GET https://api-marketplace-routing.k8.isw.la/marketplace-routing/api/v1/verify/identity/account-number/bank-list
 Authorization: Bearer {access_token}
 ```
-Returns array of `{ name, code }` objects used to populate the bank dropdown.
+Returns array of `{ name, code }` objects. The frontend currently reads the static bank catalog from `data/nigerian-banks.ts`; the backend still maintains the Marketplace-backed `marketplace_banks` cache as a fallback and for refresh tooling.
 
 **Bank account resolution:**
 ```
@@ -173,6 +187,8 @@ Content-Type: application/json
 { "accountNumber": "0123456789", "bankCode": "058" }
 ```
 Response: `{ bankDetails: { accountName: "MICHAEL JOHN DOE" } }`
+
+Amelia only accepts the verification as successful when a non-empty `accountName` is present. Empty "successful" payloads are treated as failures.
 
 **NIN verification:**
 ```
@@ -196,7 +212,7 @@ Content-Type: application/json
 ```
 Response: `{ responseCode: "00", redirectUrl: "https://opay.com/pay/..." }`
 
-No Authorization header required. User is redirected to the OPay URL.
+No Authorization header required. User is redirected to the OPay URL. Amelia still writes an immutable `payment_attempts` record before redirecting so later confirmation can reconcile against a stable transaction reference.
 
 **Status confirmation (polling — no webhook):**
 ```
@@ -205,7 +221,7 @@ Content-Type: application/json
 
 { "transactionReference": "AM..." }
 ```
-Response code `00` = payment confirmed. Frontend calls `confirmOPayPayment` Convex action on the callback page (`/pay/callback/opay`), which polls this endpoint and updates bill status to `paid` on success.
+Response code `00` = payment confirmed. Frontend calls `confirmOPayPayment` Convex action on the callback page (`/pay/callback/opay`), which polls this endpoint, reconciles against the indexed payment attempt, and updates bill status to `paid` on success.
 
 ---
 
@@ -292,7 +308,9 @@ Handler checks `hub.verify_token === META_WEBHOOK_VERIFY_TOKEN`, returns `hub.ch
 }
 ```
 
-Handler: `processMetaWebhookPayload` → `applyMetaPaymentRequestStatus` mutation → matches bill by `paymentRequestMessageId` → updates `paymentRequestStatus` to `delivered`, `read`, or `failed`.
+Handler: `processMetaWebhookPayload` → `applyMetaPaymentRequestStatus` mutation → matches bill by indexed `paymentRequestMessageId` → updates `paymentRequestStatus` to `delivered`, `read`, or `failed`.
+
+Security note: Amelia verifies `X-Hub-Signature-256` with `META_APP_SECRET` before accepting the payload.
 
 ---
 
@@ -507,13 +525,13 @@ export const paymentConfirmed = inngest.createFunction(
 
 **File:** `convex/schema.ts`
 
-13 tables with typed indexes for every access pattern:
+13 tables with typed indexes for the main access patterns:
 
 | Table | Purpose | Key indexes |
 |---|---|---|
 | `clinics` | Clinic org data, bank account, NHIA facility code | `by_clerk_user_id` |
 | `patients` | Demographics, NIN, HMO enrollment | `by_clinic`, `by_clinic_and_phone` |
-| `bills` | Admission bills, status, payment tracking | `by_clinic`, `by_clinic_and_status`, `by_payment_link_token` |
+| `bills` | Admission bills, status, payment tracking | `by_clinic`, `by_clinic_and_status`, `by_payment_link_token`, `by_payment_request_message_id` |
 | `payment_attempts` | Immutable payment initiation and reconciliation ledger | `by_txn_ref`, `by_bill` |
 | `bill_items` | Investigation/procedure line items | `by_bill` |
 | `bill_medications` | Medication line items | `by_bill` |
@@ -535,7 +553,7 @@ export const paymentConfirmed = inngest.createFunction(
                         auth_confirmed
                              ↓ (payment initiated)
                        pending_payment
-                             ↓ (webhook / callback)
+                             ↓ (verified provider reconciliation)
 [Self-pay created]  →       paid
                              ↓ (added to claim batch)
                            claimed
@@ -544,6 +562,11 @@ export const paymentConfirmed = inngest.createFunction(
                              ↓ (TPA payment overdue > 14 days)
                            overdue
 ```
+
+Guardrails:
+- auth codes can only be created or changed while the bill is `awaiting_auth` or `auth_confirmed`
+- payment callbacks do not downgrade or overwrite a terminal bill state
+- claim generation performs a final duplicate-association check before linking bills to a batch
 
 ---
 
@@ -569,7 +592,12 @@ All inbound HTTP traffic enters through a Hono-based router exported as a Convex
 **Route:** `/pay/:token`
 **File:** `src/pages/PaymentLink.tsx`
 
-No authentication required. The token format is `pay_tok_{32-char UUID without hyphens}`. Convex query `getBillByPaymentLinkToken(token)` resolves it to a bill, returning patient name, clinic name, and amount.
+No authentication required. The token format is `pay_tok_{32-char UUID without hyphens}`. Convex query `getPublicPaymentByToken(token)` resolves it to a bill, returning patient name, clinic name, and amount only when the link is still valid.
+
+Link availability rules:
+- token must match the expected format
+- unpaid and unclaimed bills only
+- token expires after 7 days from issue/initiation
 
 The page offers:
 1. **Card (Interswitch)** — calls `initiateCardPayment` action, receives hash + txnRef, submits form to Interswitch Web Checkout.
@@ -598,15 +626,17 @@ On return, `/pay/callback/card` or `/pay/callback/opay` renders the success/fail
 | `INTERSWITCH_WEBHOOK_SECRET` | HMAC-SHA512 webhook verification |
 | `ISW_MARKETPLACE_CLIENT_ID` | Identity verification OAuth client |
 | `ISW_MARKETPLACE_CLIENT_SECRET` | Identity verification OAuth secret |
-| `ISW_MARKETPLACE_BASE_URL` | Marketplace API base URL |
+| `ISW_MARKETPLACE_BASE_URL` | Marketplace OAuth base URL |
 | `MISTRAL_API_KEY` | OCR + structured extraction |
 | `META_PHONE_NUMBER_ID` | WhatsApp business phone number |
 | `META_ACCESS_TOKEN` | WhatsApp Cloud API bearer token |
 | `META_WEBHOOK_VERIFY_TOKEN` | Webhook verification token |
+| `META_APP_SECRET` | WhatsApp webhook signature verification |
 | `META_GRAPH_API_VERSION` | e.g. `v23.0` |
 | `INNGEST_EVENT_KEY` | Inngest event signing key |
 | `INNGEST_SIGNING_KEY` | Inngest webhook verification |
 | `CLERK_WEBHOOK_SIGNING_SECRET` | Clerk webhook verification |
+| `CLERK_JWT_ISSUER_DOMAIN` | Clerk issuer domain for Convex JWT validation |
 | `RESEND_API_KEY` | Transactional email |
 | `RESEND_FROM_EMAIL` | Sender address |
 | `GROQ_API_KEY` | Claim scoring LLM |
