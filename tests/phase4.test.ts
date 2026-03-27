@@ -50,7 +50,7 @@ describe("Phase 4 - Payment helpers", () => {
         macKey: "secret-mac",
       }),
     ).toBe(
-      "a8739e3a9c19c116d86693631696f7ba0e0b8570b79fce7c6c160afddfa746601cadd84f4e72ca482b18faa218871b36fd2de87d8dbd6d3e01260ec2f76774d3",
+      "4ff2f6aebf2843bf12c87b6fe06daef142678f0f0dfa01890cf38ebdd0526e52890339e10367ff95391cf3ba236b6c78b1ed0794318f86596df155c7c9fbe458",
     )
   })
 

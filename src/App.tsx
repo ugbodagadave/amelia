@@ -95,8 +95,8 @@ function App() {
       <ScrollToTop />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
-          <Route path={ROUTES.SIGN_IN} element={<SignInPage />} />
-          <Route path={ROUTES.SIGN_UP} element={<SignUpPage />} />
+          <Route path={`${ROUTES.SIGN_IN}/*`} element={<SignInPage />} />
+          <Route path={`${ROUTES.SIGN_UP}/*`} element={<SignUpPage />} />
           <Route path={ROUTES.ONBOARDING} element={<ProtectedOnboardingRoute />} />
           <Route path={ROUTES.PAYMENT_LINK} element={<PaymentLinkPage />} />
           <Route path={ROUTES.PAYMENT_CALLBACK_CARD} element={<PaymentCallbackCardPage />} />

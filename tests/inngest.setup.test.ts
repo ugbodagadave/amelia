@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { INNGEST_APP_ID } from "../src/inngest/client"
+import { INNGEST_APP_ID, resolveInngestIsDev } from "../src/inngest/client"
 import {
   APP_BOOTSTRAP_PING_EVENT,
   APP_BOOTSTRAP_PING_FUNCTION_ID,
@@ -26,6 +26,12 @@ describe("Inngest setup", () => {
 
   test("exports the bootstrap ping event constant", () => {
     expect(APP_BOOTSTRAP_PING_EVENT).toBe("app/bootstrap.ping")
+  })
+
+  test("only enables Inngest dev mode outside production builds", () => {
+    expect(resolveInngestIsDev("1", "development")).toBe(true)
+    expect(resolveInngestIsDev("1", "production")).toBe(false)
+    expect(resolveInngestIsDev(undefined, "production")).toBe(false)
   })
 
   test("registers the bootstrap function with a stable id", () => {

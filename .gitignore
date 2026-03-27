@@ -33,6 +33,7 @@ convex/_generated/
 AGENTS.md
 CLAUDE.md
 use_claude.md
+scripts/local/
 
 # Local integration notes and internal docs
 docs/

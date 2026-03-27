@@ -139,7 +139,7 @@ export function formatAmountInKobo(amountInNaira: number) {
 export function buildWebCheckoutHash(input: BuildWebCheckoutHashInput) {
   const payload =
     input.txnRef +
-    input.merchantCode +
+    input.payItemId +
     input.payItemId +
     input.amountInKobo +
     input.redirectUrl +

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "demo:seed:prod": "bun run scripts/seed-shared-demo.ts",
     "firecrawl:smoke": "bun run scripts/firecrawl-smoke.ts",
     "hmo:directory:bootstrap": "bun run scripts/bootstrap-hmo-directory.ts",
     "hmo:directory:scrape": "bun run scripts/scrape-hmo-directory.ts",
